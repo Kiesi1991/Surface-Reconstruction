@@ -23,7 +23,7 @@ def getNormals(surface, x=4, y=2):
 
     normals = torch.cat((-dfdx, -dfdy, z), dim=2)
 
-    return normalize(normals).unsqueeze(0)
+    return normalize(normals.unsqueeze(0))
 
 def getVectors(surface, targetLocation, x, y):
 
@@ -40,11 +40,10 @@ def getVectors(surface, targetLocation, x, y):
 
     surfacePoints = torch.cat((X, Y, Z), dim=2).unsqueeze(0)
 
-
     V = targetLocation-surfacePoints
 
     return normalize(V)
 
 def normalize(vector):
-    Norms = torch.linalg.norm(vector, axis=2, keepdims=True)
+    Norms = torch.linalg.norm(vector, axis=3, keepdims=True)
     return vector/Norms

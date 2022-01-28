@@ -20,7 +20,7 @@ locationLights = [[-r1, 0.0, h1], [r1, 0.0, h1],
                   [-r3, 0.0, h3], [r3, 0.0, h3],
                   [0.0, r3, h3],  [0.0, -r3, h3]]
 
-locationLights = [[-r2, 0.0, h2]]
+# locationLights = [[-r2, 0.0, h2]]
 
 cameraDistance = 8.0
 
@@ -30,21 +30,13 @@ diffuse = 0.8
 ambient = 0.5
 shininess = 50
 
-#a = torch.linspace(0,11, steps=12).view((2, 2, 1, 3))
-#b = torch.ones((2,1,1,3))
-#c = a - b
-
 shader = PhongShading(camera=[0, 0, cameraDistance], lights=locationLights, length=length, width=width)
 I = shader.forward(surface)
 
 from PIL import Image
-im = Image.fromarray(np.uint8(I*255))
-im.show()
+
 
 for idx, i in enumerate(I):
-    #lightLocation = torch.tensor([[locationLight]])
-    #I = shader.forward(surface)
-    # print(idx)
     im = Image.fromarray(np.uint8(i*255))
     im.show()
 

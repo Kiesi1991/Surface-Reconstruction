@@ -18,9 +18,9 @@ class PhongShading():
         N = getNormals(surface, x=self.length, y=self.width)
         V = getVectors(surface, self.camera, x=self.length, y=self.width)
         L = getVectors(surface, self.lights, x=self.length, y=self.width)
-        LoN = torch.einsum('abcd, abcd -> abc', L, N).squeeze(0)
-        R = 2 * LoN.unsqueeze(2) * N.squeeze(0) - L.squeeze(0)
-        RoV = torch.einsum('abcd, abcd -> abc', R.unsqueeze(0), V).squeeze(0)
+        LoN = torch.einsum('abcd, abcd -> abc', L, N)
+        R = 2 * LoN.unsqueeze(3) * N - L
+        RoV = torch.einsum('abcd, abcd -> abc', R, V)
 
         I = self.ambient + self.diffuse * LoN + self.specular * (RoV ** self.shininess)
 
