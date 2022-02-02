@@ -31,6 +31,7 @@ def getVectors(surface, targetLocation, x, y):
     dx = x/w
     dy = y/h
 
+    # change to torch.tensor
     X = np.expand_dims(np.linspace(-(w // 2) * dx, (w // 2) * dx, num=w), axis=0)
     Y = np.expand_dims(np.linspace(-(h // 2) * dy, (h // 2) * dy, num=h), axis=1)
 
