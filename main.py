@@ -12,7 +12,7 @@ from PIL import Image
 from statistics import mean
 import matplotlib.pyplot as plt
 
-from models import zPrediction
+from models import *
 
 # surface properties
 length = 2
@@ -76,7 +76,6 @@ def _forward(network: nn.Module, data: DataLoader, metric: callable):
     device = next(network.parameters()).device
 
     for j, (surface, idx) in enumerate(data):
-        res = 0
         surface = surface.to(device)
         x = shader.forward(surface)
 
@@ -106,7 +105,7 @@ def update(network: nn.Module, data: DataLoader, loss: nn.Module,
         errs.append(err.item())
 
         opt.zero_grad()
-        err.backward()
+        (err).backward()
         opt.step()
     return errs
 
@@ -135,8 +134,11 @@ for epoch in range(num_epochs):
     errs = update(model, trainloader, mse, optimizer)
     val_errs = evaluate(model, testloader, mse)
 
-    im = shader.forward(testset[0][0].unsqueeze(0).cuda())
+    surface_im = testset[0][0].unsqueeze(0).cuda()
+    im = shader.forward(surface_im)
     pred = model(im)
+
+    mse_surface = mse(surface_im, pred)
 
     im = im[0][im_nr].unsqueeze(2).repeat(1, 1, 3)
     im_pred = shader.forward(pred)[0][im_nr].unsqueeze(2).repeat(1, 1, 3)
@@ -150,6 +152,6 @@ for epoch in range(num_epochs):
 
     plt.savefig(os.path.join(path, f'{epoch}.png'))
 
-    print(f'Epoch {epoch} AVG Mean {mean(errs):.6f} AVG Val Mean {mean(val_errs):.6f}')
+    print(f'Epoch {epoch} AVG Mean {mean(errs):.6f} AVG Val Mean {mean(val_errs):.6f} MSE Surface {mse_surface}')
 
 print('TheEnd')
