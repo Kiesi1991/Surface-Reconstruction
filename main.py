@@ -22,7 +22,7 @@ resolution = (512, 512)
 
 # training parameters
 num_epochs = 20
-lr = 1e-3
+lr = 1e-4
 
 surface = createSurface(resolution)
 
@@ -114,7 +114,7 @@ def update(network: nn.Module, data: DataLoader, loss: nn.Module,
 ############################################################################
 
 mse = torch.nn.MSELoss()
-optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=0.9)
+optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=0.01)
 
 path = os.path.join('results')
 
@@ -129,7 +129,7 @@ while True:
     else:
         folder += 1
 
-im_nr = 5
+im_nr = [5, 8]
 for epoch in range(num_epochs):
     errs = update(model, trainloader, mse, optimizer)
     val_errs = evaluate(model, testloader, mse)
@@ -140,17 +140,19 @@ for epoch in range(num_epochs):
 
     mse_surface = mse(surface_im, pred)
 
-    im = im[0][im_nr].unsqueeze(2).repeat(1, 1, 3)
-    im_pred = shader.forward(pred)[0][im_nr].unsqueeze(2).repeat(1, 1, 3)
+    for light in im_nr:
+        im_target = im[0][light].unsqueeze(2).repeat(1, 1, 3)
+        im_pred = shader.forward(pred)[0][light].unsqueeze(2).repeat(1, 1, 3)
 
-    plt.figure(figsize=(20, 10))
-    plt.subplot(1, 2, 1)
-    plt.imshow(im.cpu().detach().numpy())
+        plt.figure(figsize=(20, 10))
+        plt.subplot(1, 2, 1)
+        plt.imshow(im_target.cpu().detach().numpy())
 
-    plt.subplot(1, 2, 2)
-    plt.imshow(im_pred.cpu().detach().numpy())
+        plt.subplot(1, 2, 2)
+        plt.imshow(im_pred.cpu().detach().numpy())
 
-    plt.savefig(os.path.join(path, f'{epoch}.png'))
+        plt.savefig(os.path.join(path, f'{epoch}-{light}.png'))
+        plt.close()
 
     print(f'Epoch {epoch} AVG Mean {mean(errs):.6f} AVG Val Mean {mean(val_errs):.6f} MSE Surface {mse_surface}')
 

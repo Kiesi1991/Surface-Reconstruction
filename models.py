@@ -10,8 +10,7 @@ class zPrediction(nn.Module):
         self.conv2 = nn.Conv2d(96, 48, kernel_size=3, padding=3 // 2)
         self.conv3 = nn.Conv2d(48, 24, kernel_size=3, padding=3 // 2)
         self.conv4 = nn.Conv2d(24, 12, kernel_size=3, padding=3 // 2)
-        self.conv5 = nn.Conv2d(12, 6, kernel_size=3, padding=3 // 2)
-        self.conv6 = nn.Conv2d(6, 1, kernel_size=3, padding=3 // 2)
+        self.conv5 = nn.Conv2d(12, 1, kernel_size=3, padding=3 // 2)
 
         self.relu = nn.ReLU()
         self.selu = nn.SELU()
@@ -22,8 +21,7 @@ class zPrediction(nn.Module):
         x = self.selu(self.conv2(x))
         x = self.selu(self.conv3(x))
         x = self.selu(self.conv4(x))
-        x = self.selu(self.conv5(x))
-        x = self.conv6(x)
+        x = self.conv5(x)
 
         return x.squeeze(1)
 
