@@ -8,43 +8,46 @@ def createSurface(resolution):
     return torch.from_numpy(surface)
 
 def getNormals(surface, x=4, y=2):
-    hx = x / surface.shape[1]
-    hy = y / surface.shape[0]
 
+    hx = x / surface.shape[2]
+    hy = y / surface.shape[1]
+
+    # alternative: torch.gradient or torch.diff
     dfdx = (surface[..., 1:] - surface[..., :-1]) / hx
-    dfdx1 = ((surface[:, -1] - surface[:, -2]) / hx).unsqueeze(1)
-    dfdx = torch.cat((dfdx, dfdx1), dim=1).unsqueeze(2)
+    dfdx1 = ((surface[..., -1] - surface[..., -2]) / hx).unsqueeze(2)
+    dfdx = torch.cat((dfdx, dfdx1), dim=2).unsqueeze(3)
 
-    dfdy = ((surface[1:, ...] - surface[:-1, ...]) / hy)
-    dfdy1 = ((surface[-1, :] - surface[-2, :]) / hx).unsqueeze(0)
-    dfdy = torch.cat((dfdy, dfdy1), dim=0).unsqueeze(2)
+    dfdy = ((surface[:, 1:, ...] - surface[:, :-1, ...]) / hy)
+    dfdy1 = ((surface[:, -1, ...] - surface[:, -2, ...]) / hx).unsqueeze(1)
+    dfdy = torch.cat((dfdy, dfdy1), dim=1).unsqueeze(3)
 
     z = torch.ones_like(dfdx)
 
-    normals = torch.cat((-dfdx, -dfdy, z), dim=2)
+    normals = torch.cat((-dfdx, -dfdy, z), dim=3)
 
-    return normalize(normals.unsqueeze(0))
+    return normalize(normals.unsqueeze(1))
 
 def getVectors(surface, targetLocation, x, y):
 
-    h, w = surface.shape
+    device = surface.device
+
+    b, h, w = surface.shape
     dx = x/w
     dy = y/h
 
-    # change to torch.tensor
-    X = np.expand_dims(np.linspace(-(w // 2) * dx, (w // 2) * dx, num=w), axis=0)
-    Y = np.expand_dims(np.linspace(-(h // 2) * dy, (h // 2) * dy, num=h), axis=1)
+    X = torch.linspace(-(w // 2) * dx, (w // 2) * dx, steps=w).unsqueeze(0)
+    Y = torch.linspace(-(h // 2) * dy, (h // 2) * dy, steps=h).unsqueeze(1)
 
-    X = torch.from_numpy(np.expand_dims(np.repeat(X, h, axis=0), axis=2))
-    Y = torch.from_numpy(np.expand_dims(np.repeat(Y, w, axis=1), axis=2))
-    Z = surface.unsqueeze(2)
+    X = X.repeat(h, 1).unsqueeze(0).repeat(b, 1, 1).unsqueeze(-1).to(device)
+    Y = Y.repeat(1, w).unsqueeze(0).repeat(b, 1, 1).unsqueeze(-1).to(device)
+    Z = surface.unsqueeze(3)
 
-    surfacePoints = torch.cat((X, Y, Z), dim=2).unsqueeze(0)
+    surfacePoints = torch.cat((X, Y, Z), dim=3).unsqueeze(1)
 
-    V = targetLocation-surfacePoints
+    V = targetLocation - surfacePoints
 
     return normalize(V)
 
 def normalize(vector):
-    Norms = torch.linalg.norm(vector, axis=3, keepdims=True)
+    Norms = torch.linalg.norm(vector, axis=4, keepdims=True)
     return vector/Norms

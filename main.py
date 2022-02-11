@@ -1,3 +1,5 @@
+import os.path
+
 import torch
 from torch import nn
 from torch.utils.data import DataLoader
@@ -7,18 +9,20 @@ import numpy as np
 from shaders import PhongShading
 from dataset import DummySet
 from PIL import Image
+from statistics import mean
+import matplotlib.pyplot as plt
 
 from models import zPrediction
 
 # surface properties
-length = 4
+length = 2
 width = 2
 
-resolution = (512, 1028)
+resolution = (512, 512)
 
 # training parameters
-num_epochs = 2
-lr = 1e-4
+num_epochs = 20
+lr = 1e-3
 
 surface = createSurface(resolution)
 
@@ -36,12 +40,19 @@ cameraDistance = 8.0
 
 dataset = DummySet(resolution)
 
-shader = PhongShading(camera=[0, 0, cameraDistance], lights=locationLights, length=length, width=width)
-I = shader.forward(dataset.data[0])
+model = zPrediction()
+if torch.cuda.is_available():
+    device = 'cuda'
+    model.to(device)
+else:
+    device = 'cpu'
 
-for idx, i in enumerate(I):
-    im = Image.fromarray(np.uint8(i*255))
-    im.show()
+shader = PhongShading(camera=[0, 0, cameraDistance], lights=locationLights, length=length, width=width, device=device)
+#I = shader.forward(dataset.data[0])
+
+#for idx, i in enumerate(I):
+#    im = Image.fromarray(np.uint8(i*255))
+#    im.show()
 
 n_samples = len(dataset)
 # Shuffle integers from 0 n_samples to get shuffled sample indices
@@ -54,26 +65,33 @@ from torch.utils.data import Subset
 testset = Subset(dataset, indices=testset_inds)
 trainingset = Subset(dataset, indices=trainingset_inds)
 
+testloader = DataLoader(testset, batch_size=1, shuffle=False)
+trainloader = DataLoader(trainingset, batch_size=4, shuffle=True)
+
 ############################################################################
 # Update and evaluate network
 ############################################################################
 
-def _forward(network: nn.Module, data: DataLoader, metric: callable, i=None, evaluate=False):
+def _forward(network: nn.Module, data: DataLoader, metric: callable):
     device = next(network.parameters()).device
 
     for j, (surface, idx) in enumerate(data):
         res = 0
-        surface = surface.to(dtype=torch.float32)
+        surface = surface.to(device)
         x = shader.forward(surface)
-        y = y.to(dtype=torch.float32)
+
+        pred = model(x)
+        pred = shader.forward((pred))
+
+        res = metric(pred, x)
 
         yield res
 
 @torch.no_grad()
-def evaluate(network: nn.Module, data: DataLoader, metric: callable, i) -> list:
+def evaluate(network: nn.Module, data: DataLoader, metric: callable) -> list:
     network.eval()
 
-    results = _forward(network, data, metric, i=i, evaluate=True)
+    results = _forward(network, data, metric)
     return [res.item() for res in results]
 
 
@@ -96,12 +114,42 @@ def update(network: nn.Module, data: DataLoader, loss: nn.Module,
 # training and evaluation
 ############################################################################
 
-model = zPrediction()
 mse = torch.nn.MSELoss()
 optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=0.9)
 
-for epoch in range(num_epochs):
-    errs = update(model, trainingset, mse, optimizer)
+path = os.path.join('results')
 
+folder = 0
+while True:
+    if not os.path.exists(os.path.join(path)):
+        os.mkdir(os.path.join(path))
+    if not os.path.exists(os.path.join(path, f'{folder}')):
+        os.mkdir(os.path.join(path, f'{folder}'))
+        path = os.path.join(path, f'{folder}')
+        break
+    else:
+        folder += 1
+
+im_nr = 5
+for epoch in range(num_epochs):
+    errs = update(model, trainloader, mse, optimizer)
+    val_errs = evaluate(model, testloader, mse)
+
+    im = shader.forward(testset[0][0].unsqueeze(0).cuda())
+    pred = model(im)
+
+    im = im[0][im_nr].unsqueeze(2).repeat(1, 1, 3)
+    im_pred = shader.forward(pred)[0][im_nr].unsqueeze(2).repeat(1, 1, 3)
+
+    plt.figure(figsize=(20, 10))
+    plt.subplot(1, 2, 1)
+    plt.imshow(im.cpu().detach().numpy())
+
+    plt.subplot(1, 2, 2)
+    plt.imshow(im_pred.cpu().detach().numpy())
+
+    plt.savefig(os.path.join(path, f'{epoch}.png'))
+
+    print(f'Epoch {epoch} AVG Mean {mean(errs):.6f} AVG Val Mean {mean(val_errs):.6f}')
 
 print('TheEnd')

@@ -3,7 +3,7 @@ from utils import createSurface
 import torch
 
 class DummySet(Dataset):
-    def __init__(self, resolution, amount_data=100):
+    def __init__(self, resolution, amount_data=300):
         self.len = amount_data
         self.data = torch.tensor([createSurface(resolution).tolist() for i in range(amount_data)], dtype=torch.float64)
     def __getitem__(self, index):
