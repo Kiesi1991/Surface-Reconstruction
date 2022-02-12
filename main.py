@@ -130,6 +130,9 @@ while True:
         folder += 1
 
 im_nr = [5, 8]
+diff = []
+vals = []
+trains = []
 for epoch in range(num_epochs):
     errs = update(model, trainloader, mse, optimizer)
     val_errs = evaluate(model, testloader, mse)
@@ -138,7 +141,19 @@ for epoch in range(num_epochs):
     im = shader.forward(surface_im)
     pred = model(im)
 
-    mse_surface = mse(surface_im, pred)
+    mse_surface = mse(surface_im, pred).item()
+
+    diff.append(mse_surface)
+    vals.append(mean(val_errs))
+    trains.append(mean(errs))
+
+    x = np.linspace(0, len(diff)-1, len(diff))
+    plt.plot(x, diff, label='difference')
+    plt.plot(x, vals, label='validation')
+    plt.plot(x, trains, label='training')
+    plt.legend()
+    plt.savefig(os.path.join(path, f'{epoch}.png'))
+    plt.close()
 
     for light in im_nr:
         im_target = im[0][light].unsqueeze(2).repeat(1, 1, 3)
