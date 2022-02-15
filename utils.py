@@ -5,6 +5,7 @@ import torch
 def createSurface(resolution):
     surface = np.random.choice(np.array([1.0, -1.0, 0.0]), size=resolution, p=[0.01, 0.01, 0.98])
     surface = gaussian_filter(surface, sigma=10, mode='reflect')
+    # varieren von sigma, for loop for random points, other filters, use more pixel
     return torch.from_numpy(surface)
 
 def getNormals(surface, x=4, y=2):

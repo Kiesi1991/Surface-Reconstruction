@@ -21,7 +21,7 @@ width = 2
 resolution = (512, 512)
 
 # training parameters
-num_epochs = 20
+num_epochs = 40
 lr = 1e-4
 
 surface = createSurface(resolution)
@@ -129,7 +129,7 @@ while True:
     else:
         folder += 1
 
-im_nr = [5, 8]
+im_nr = [5, 9]
 diff = []
 vals = []
 trains = []
@@ -147,14 +147,6 @@ for epoch in range(num_epochs):
     vals.append(mean(val_errs))
     trains.append(mean(errs))
 
-    x = np.linspace(0, len(diff)-1, len(diff))
-    plt.plot(x, diff, label='difference')
-    plt.plot(x, vals, label='validation')
-    plt.plot(x, trains, label='training')
-    plt.legend()
-    plt.savefig(os.path.join(path, f'{epoch}.png'))
-    plt.close()
-
     for light in im_nr:
         im_target = im[0][light].unsqueeze(2).repeat(1, 1, 3)
         im_pred = shader.forward(pred)[0][light].unsqueeze(2).repeat(1, 1, 3)
@@ -170,5 +162,15 @@ for epoch in range(num_epochs):
         plt.close()
 
     print(f'Epoch {epoch} AVG Mean {mean(errs):.6f} AVG Val Mean {mean(val_errs):.6f} MSE Surface {mse_surface}')
+
+x = np.linspace(0, len(diff)-1, len(diff))
+plt.plot(x, diff, label='difference')
+plt.plot(x, vals, label='validation')
+plt.plot(x, trains, label='training')
+plt.xlabel('epoch')
+plt.ylabel('Error')
+plt.legend()
+plt.savefig(os.path.join(path, f'{epoch}.png'))
+plt.close()
 
 print('TheEnd')
