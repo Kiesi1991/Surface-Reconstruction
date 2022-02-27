@@ -3,6 +3,10 @@ import torch
 import torchvision
 import torch.nn.functional as F
 
+###############################################
+#                ZPrediction                  #
+###############################################
+
 class zPrediction(nn.Module):
     def __init__(self):
         super(zPrediction, self).__init__()
@@ -24,6 +28,42 @@ class zPrediction(nn.Module):
         x = self.conv5(x)
 
         return x.squeeze(1)
+
+###############################################
+#               ResidualNetwork               #
+###############################################
+
+class ResidualNetwork(nn.Module):
+    def __init__(self, layers=6):
+        super().__init__()
+        self.res_blocks = nn.ModuleList([ResBlock(12) for i in range(layers)])
+        self.head = nn.Conv2d(12, 1, kernel_size=3, padding=3//2)
+
+    def forward(self, x):
+        #ftrs = []
+        for block in self.res_blocks:
+            x = block(x)
+            #ftrs.append(x)
+        x = self.head(x)
+        return x.squeeze(1)
+
+class ResBlock(nn.Module):
+    def __init__(self, in_ch):
+        super().__init__()
+        self.conv1 = nn.Conv2d(in_ch, in_ch, kernel_size=7, padding=7//2)
+        self.relu = nn.ReLU()
+        self.selu = nn.SELU()
+        self.conv2 = nn.Conv2d(in_ch, in_ch//2, kernel_size=5, padding=5//2)
+        self.skipconnections = nn.Conv2d(in_ch, in_ch//2, kernel_size=1)
+
+    def forward(self, x):
+        fx = self.conv2(self.selu(self.conv1(x)))
+        skip = self.skipconnections(x)
+        return self.selu(torch.cat((fx, skip), dim=1))
+
+###############################################
+#                  UNet                       #
+###############################################
 
 # https://amaarora.github.io/2020/09/13/unet.html
 
@@ -100,7 +140,7 @@ class Decoder(nn.Module):
         return enc_ftrs
 
 class UNet(nn.Module):
-    def __init__(self, enc_chs=(12, 32, 64), dec_chs=(64, 32), num_class=1, retain_dim=True, out_sz=(512, 512)):
+    def __init__(self, enc_chs=(12, 24, 48, 96, 192), dec_chs=(192, 96, 48, 24), num_class=1, retain_dim=True, out_sz=(512, 512)):
         super().__init__()
         self.encoder     = Encoder(enc_chs)
         self.decoder     = Decoder(dec_chs)

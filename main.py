@@ -21,10 +21,8 @@ width = 2
 resolution = (512, 512)
 
 # training parameters
-num_epochs = 40
+num_epochs = 10
 lr = 1e-4
-
-surface = createSurface(resolution)
 
 h1, h2, h3 = 0.79, 3.29, 5.79
 r1, r2, r3 = 2.975, 2.660705446, 1.937933168
@@ -40,7 +38,7 @@ cameraDistance = 8.0
 
 dataset = DummySet(resolution)
 
-model = zPrediction()
+model = ResidualNetwork()
 if torch.cuda.is_available():
     device = 'cuda'
     model.to(device)

@@ -2,10 +2,21 @@ from scipy.ndimage import gaussian_filter
 import numpy as np
 import torch
 
-def createSurface(resolution):
-    surface = np.random.choice(np.array([1.0, -1.0, 0.0]), size=resolution, p=[0.01, 0.01, 0.98])
-    surface = gaussian_filter(surface, sigma=10, mode='reflect')
-    # varieren von sigma, for loop for random points, other filters, use more pixel
+#[(4, 0.0001),
+#                                    (6, 0.0005),
+#                                    (8, 0.0005),
+#                                    (10, 0.001),
+#                                    (20, 0.001),
+#                                    (50, 0.001),
+#                                    (100, 0.001)]
+
+def createSurface(resolution, para=[(20, 0.001)]):
+    surface = np.zeros(resolution)
+    for sigma, p in para:
+        surface1 = np.random.choice(np.array([1.0, 0.0]), size=resolution, p=[p, 1.0-p])
+        var = np.random.normal(0, sigma//10, 1)[0]
+        surface1 = gaussian_filter(surface1, sigma=sigma+var, mode='reflect')
+        surface += (surface1 / surface1.max()) * 0.02 * (sigma/10)
     return torch.from_numpy(surface)
 
 def getNormals(surface, x=4, y=2):
@@ -13,7 +24,6 @@ def getNormals(surface, x=4, y=2):
     hx = x / surface.shape[2]
     hy = y / surface.shape[1]
 
-    # alternative: torch.gradient or torch.diff
     dfdx = (surface[..., 1:] - surface[..., :-1]) / hx
     dfdx1 = ((surface[..., -1] - surface[..., -2]) / hx).unsqueeze(2)
     dfdx = torch.cat((dfdx, dfdx1), dim=2).unsqueeze(3)
