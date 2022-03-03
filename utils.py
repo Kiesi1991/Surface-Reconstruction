@@ -16,7 +16,7 @@ def createSurface(resolution, para=[(20, 0.001)]):
         surface1 = np.random.choice(np.array([1.0, 0.0]), size=resolution, p=[p, 1.0-p])
         var = np.random.normal(0, sigma//10, 1)[0]
         surface1 = gaussian_filter(surface1, sigma=sigma+var, mode='reflect')
-        surface += (surface1 / surface1.max()) * 0.02 * (sigma/10)
+        surface += (surface1 / surface1.max()) * 0.02 * (sigma/5)
     return torch.from_numpy(surface)
 
 def getNormals(surface, x=4, y=2):

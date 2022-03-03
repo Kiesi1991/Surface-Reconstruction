@@ -3,6 +3,7 @@ import os.path
 import torch
 from torch import nn
 from torch.utils.data import DataLoader
+from torch.utils.data import Subset
 
 from utils import *
 import numpy as np
@@ -36,8 +37,6 @@ locationLights = [[-r1, 0.0, h1], [r1, 0.0, h1],
 
 cameraDistance = 8.0
 
-dataset = DummySet(resolution)
-
 model = ResidualNetwork()
 if torch.cuda.is_available():
     device = 'cuda'
@@ -46,11 +45,8 @@ else:
     device = 'cpu'
 
 shader = PhongShading(camera=[0, 0, cameraDistance], lights=locationLights, length=length, width=width, device=device)
-#I = shader.forward(dataset.data[0])
 
-#for idx, i in enumerate(I):
-#    im = Image.fromarray(np.uint8(i*255))
-#    im.show()
+dataset = DummySet(resolution)
 
 n_samples = len(dataset)
 # Shuffle integers from 0 n_samples to get shuffled sample indices
@@ -58,7 +54,6 @@ shuffled_indices = np.random.permutation(n_samples)
 testset_inds = shuffled_indices[:n_samples//10]
 trainingset_inds = shuffled_indices[n_samples//10:]
 
-from torch.utils.data import Subset
 # Create PyTorch subsets from our subset-indices
 testset = Subset(dataset, indices=testset_inds)
 trainingset = Subset(dataset, indices=trainingset_inds)
@@ -112,7 +107,7 @@ def update(network: nn.Module, data: DataLoader, loss: nn.Module,
 ############################################################################
 
 mse = torch.nn.MSELoss()
-optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=0.01)
+optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=0.0)
 
 path = os.path.join('results')
 

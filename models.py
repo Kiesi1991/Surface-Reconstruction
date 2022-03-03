@@ -51,15 +51,26 @@ class ResBlock(nn.Module):
     def __init__(self, in_ch):
         super().__init__()
         self.conv1 = nn.Conv2d(in_ch, in_ch, kernel_size=7, padding=7//2)
+        self.conv2 = nn.Conv2d(in_ch, in_ch//3, kernel_size=5, padding=5//2)
+
+        self.conv3 = nn.Conv2d(in_ch, in_ch, kernel_size=7, padding=7//2)
+        self.conv4 = nn.Conv2d(in_ch, in_ch//3, kernel_size=5, padding=5//2)
+
+        self.skipconnections = nn.Conv2d(in_ch, in_ch//3, kernel_size=1)
+
         self.relu = nn.ReLU()
         self.selu = nn.SELU()
-        self.conv2 = nn.Conv2d(in_ch, in_ch//2, kernel_size=5, padding=5//2)
-        self.skipconnections = nn.Conv2d(in_ch, in_ch//2, kernel_size=1)
 
     def forward(self, x):
+        b, l, h, w = x.shape
         fx = self.conv2(self.selu(self.conv1(x)))
+
+        lx = F.interpolate(x, (h//4, w//4))
+        lx = self.conv4(self.selu(self.conv3(lx)))
+        lx = F.interpolate(lx, (h, w))
+
         skip = self.skipconnections(x)
-        return self.selu(torch.cat((fx, skip), dim=1))
+        return self.selu(torch.cat((fx, lx, skip), dim=1))
 
 ###############################################
 #                  UNet                       #
@@ -140,7 +151,7 @@ class Decoder(nn.Module):
         return enc_ftrs
 
 class UNet(nn.Module):
-    def __init__(self, enc_chs=(12, 24, 48, 96, 192), dec_chs=(192, 96, 48, 24), num_class=1, retain_dim=True, out_sz=(512, 512)):
+    def __init__(self, enc_chs=(12, 24, 48), dec_chs=(48, 24), num_class=1, retain_dim=True, out_sz=(512, 512)):
         super().__init__()
         self.encoder     = Encoder(enc_chs)
         self.decoder     = Decoder(dec_chs)
