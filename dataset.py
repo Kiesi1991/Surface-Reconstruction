@@ -3,12 +3,11 @@ from utils import createSurface
 import torch
 
 class DummySet(Dataset):
-    def __init__(self, resolution, sigmas=[4, 5, 10, 20, 30], amount_data=300):
+    def __init__(self, resolution, sigma, p, amount_data=300):
         self.len = amount_data
         self.resolution = resolution
-        #self.data = torch.tensor([createSurface(resolution).tolist() for i in range(amount_data)], dtype=torch.float64)
+        self.para = [(sigma, p)]
     def __getitem__(self, index):
-        return torch.tensor(createSurface(self.resolution).tolist()), index
-        #return self.data[index], index
+        return torch.tensor(createSurface(self.resolution, para=self.para).tolist()), index
     def __len__(self):
         return self.len

@@ -10,7 +10,7 @@ import torch
 #                                    (50, 0.001),
 #                                    (100, 0.001)]
 
-def createSurface(resolution, para=[(20, 0.001)]):
+def createSurface(resolution, para=[(30, 0.01)]):
     surface = np.zeros(resolution)
     for sigma, p in para:
         surface1 = np.random.choice(np.array([1.0, 0.0]), size=resolution, p=[p, 1.0-p])
