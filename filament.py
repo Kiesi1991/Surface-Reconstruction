@@ -2,9 +2,9 @@
 
 import torch
 import torch.nn.functional as tfunc
-from cubes import Cubes
-import nvdiffrast.torch as dr
-from torchutil import atleast
+#from cubes import Cubes # not relevant for IBL
+#import nvdiffrast.torch as dr #nvidearenderer, not relevant
+# from torchutil import atleast # not relevant
 
 
 # from filament brdf.fs/D_GGX()
@@ -152,20 +152,20 @@ def energy_compensation(
 def evaluate_point_lights(
         light_color: torch.Tensor,  # S?,C?,1,1,L?,CH
         light_intensity: torch.Tensor,  # S?,C?,1,1,L?,1
-        light_attenuation: torch.Tensor,  # S,C,H,W,L,1
-        diffuseColor: torch.Tensor,  # S?,C?,H?,W?,1,CH
-        perceptual_roughness: torch.Tensor,  # S?,C?,H?,W?,1,1
-        roughness: torch.Tensor,  # S?,C?,H?,W?,1,1
-        f0: torch.Tensor,  # S?,C?,H?,W?,1,CH?
+        light_attenuation: torch.Tensor,  # S,C,H,W,L,1 # MK: 1/r
+        diffuseColor: torch.Tensor,  # S?,C?,H?,W?,1,CH #MK: color from surface
+        perceptual_roughness: torch.Tensor,  # S?,C?,H?,W?,1,1 #MK: roughness**2
+        roughness: torch.Tensor,  # S?,C?,H?,W?,1,1 #MK: Reflexionsparameter
+        f0: torch.Tensor,  # S?,C?,H?,W?,1,CH? # wird aus der Diffusecolor berechnet (siehe pbr_render function)
         light_dir: torch.Tensor,  # S,C,H,W,L,3
         NoL: torch.Tensor,  # S,C,H,W,L,1
         view_dir: torch.Tensor,  # S,C,H,W,1,3
         NoV: torch.Tensor,  # S,C,H,W,1,1
         normal: torch.Tensor,  # S,C,H,W,1,3
-        use_fast_smith: bool,
-        use_energy_compensation: bool,
-        dfg_multiscatter: torch.Tensor,  # 2,D,D
-        with_specular: bool = True,
+        use_fast_smith: bool, # MK: False (schneller rendern)
+        use_energy_compensation: bool, # MK: False (Korrekturfaktor)
+        dfg_multiscatter: torch.Tensor,  # 2,D,D # MK: (dann braucht man diesen Wert nicht), D = Größe der Lookuptabelle
+        with_specular: bool = True, # MK: True (spiegelden Reflexionen)
 ) -> torch.Tensor:
     S, C, H, W, L, _ = NoL.shape
     h = tfunc.normalize(view_dir + light_dir, dim=-1)  # S,C,H,W,L,3
@@ -244,7 +244,7 @@ def get_reflected(
 
 
 # from filament light_indirect.fs/prefilteredRadiance()
-def prefiltered_radiance(
+'''def prefiltered_radiance(
         perceptual_roughness: torch.Tensor,  # S?,C?,H?,W?,1,1
         refl_vec: torch.Tensor,  # S,C,H,W,1,3
         cube_textures: torch.Tensor,  # list of S?,C?,6,HC',WC',L,CH
@@ -280,7 +280,7 @@ def prefiltered_radiance(
     mip = [m.contiguous() for m in mip]
 
     radiance = dr.texture(tex=tex, uv=uv, mip_level_bias=lod, mip=mip, boundary_mode='cube')  # S*C,H,W,L*C
-    return radiance.reshape(S, C, H, W, L, CH)
+    return radiance.reshape(S, C, H, W, L, CH)'''
 
 
 # from filament light_indirect.fs/Irradiance_SphericalHarmonics

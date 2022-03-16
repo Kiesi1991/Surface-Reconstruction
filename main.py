@@ -37,10 +37,16 @@ locationLights = [[-r1, 0.0, h1], [r1, 0.0, h1],
 
 cameraDistance = 8.0
 
-paras = [(5, 0.1), (5, 0.5), (10, 0.1), (20, 0.1), (20, 0.01), (20, 0.001), (30, 0.01), (30, 0.001), (40, 0.01), (40, 0.001), (50, 0.01), (50, 0.001)]
+#paras = [(5, 0.1), (5, 0.5), (10, 0.1), (20, 0.1), (20, 0.01), (20, 0.001), (30, 0.01), (30, 0.001), (40, 0.01), (40, 0.001), (50, 0.01), (50, 0.001)]
+paras = [[(5,0.05),
+         (10,0.05),
+         (20,0.05),
+         (30,0.05),
+         (40,0.05),
+         (50,0.05)]]
 
-for j, (sigma, p) in enumerate(paras):
-    model = UNet()
+for j, paras in enumerate(paras):
+    model = ResidualNetwork()
     if torch.cuda.is_available():
         device = 'cuda'
         model.to(device)
@@ -49,7 +55,7 @@ for j, (sigma, p) in enumerate(paras):
 
     shader = PhongShading(camera=[0, 0, cameraDistance], lights=locationLights, length=length, width=width, device=device)
 
-    dataset = DummySet(resolution, sigma, p)
+    dataset = DummySet(resolution, para=paras)
 
     n_samples = len(dataset)
     # Shuffle integers from 0 n_samples to get shuffled sample indices
@@ -118,9 +124,9 @@ for j, (sigma, p) in enumerate(paras):
     while True:
         if not os.path.exists(os.path.join(path)):
             os.mkdir(os.path.join(path))
-        if not os.path.exists(os.path.join(path, f'{folder}', f'sigma={sigma},p={p}')):
-            os.mkdir(os.path.join(path, f'{folder}', f'sigma={sigma},p={p}'))
-            path = os.path.join(path, f'{folder}', f'sigma={sigma},p={p}')
+        if not os.path.exists(os.path.join(path, f'{folder}')):#, f'sigma={sigma},p={p}')):
+            os.mkdir(os.path.join(path, f'{folder}'))#, f'sigma={sigma},p={p}'))
+            path = os.path.join(path, f'{folder}')#, f'sigma={sigma},p={p}')
             break
         else:
             folder += 1
