@@ -11,9 +11,9 @@ class PhongShading():
         self.diffuse = diffuse
         self. ambient = ambient
         self. shininess = shininess
-        self. camera = torch.tensor([[[camera]]]).to(device).unsqueeze(1)
+        self. camera = torch.tensor([[[camera]]]).to(device).unsqueeze(1) #1,1,1,1,3
         self.length, self.width = length, width
-        self.lights = torch.tensor(lights).unsqueeze(1).unsqueeze(1).unsqueeze(0).to(device)
+        self.lights = torch.tensor(lights).unsqueeze(1).unsqueeze(1).unsqueeze(0).to(device) #1,12,1,1,3
     def forward(self, surface):
         # calculating normalized vectors for phong shading
         N = getNormals(surface, x=self.length, y=self.width)
