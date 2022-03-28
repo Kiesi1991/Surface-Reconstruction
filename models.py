@@ -47,7 +47,7 @@ class ResidualNetwork(nn.Module):
             x = block(x)
             #ftrs.append(x)
         x = self.head(x)
-        return x.squeeze(1)
+        return torch.clamp(x.squeeze(1), min=-0.5, max=0.5)
 
 class ResBlock(nn.Module):
     def __init__(self, in_ch):

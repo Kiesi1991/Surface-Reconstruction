@@ -23,7 +23,7 @@ width = 2
 resolution = (512, 512)
 
 # training parameters
-num_epochs = 50
+num_epochs = 20
 lr = 1e-4
 
 h1, h2, h3 = 0.79, 3.29, 5.79
@@ -70,7 +70,7 @@ for j, paras in enumerate(paras):
     trainingset = Subset(dataset, indices=trainingset_inds)
 
     testloader = DataLoader(testset, batch_size=1, shuffle=False)
-    trainloader = DataLoader(trainingset, batch_size=4, shuffle=True)
+    trainloader = DataLoader(trainingset, batch_size=3, shuffle=True)
 
     ############################################################################
     # Update and evaluate network
