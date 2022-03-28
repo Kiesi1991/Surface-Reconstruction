@@ -70,7 +70,7 @@ for j, paras in enumerate(paras):
     trainingset = Subset(dataset, indices=trainingset_inds)
 
     testloader = DataLoader(testset, batch_size=1, shuffle=False)
-    trainloader = DataLoader(trainingset, batch_size=1, shuffle=True)
+    trainloader = DataLoader(trainingset, batch_size=4, shuffle=True)
 
     ############################################################################
     # Update and evaluate network

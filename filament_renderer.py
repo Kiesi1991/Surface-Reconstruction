@@ -19,24 +19,24 @@ lights = torch.tensor(locationLights)
 cameraDistance = 8.0
 camera = torch.tensor([[[[[0, 0, cameraDistance]]]]])'''
 
-def filament_renderer(surface, camera, lights, size=(2,2)):
-    surface = surface[0]
+def filament_renderer(surface, camera, lights):
+    surface = surface
     lights = lights.unsqueeze(1).unsqueeze(1).unsqueeze(0)
-    H, W = surface.shape
+    B, H, W = surface.shape
     L = lights.size()[1]
     x = y = 1  # ???
-    light_dir = getVectors(surface.unsqueeze(0), lights, x, y, norm=False).permute(0,2,3,1,4)[None] #1,1,H,W,L,3
+    light_dir = getVectors(surface, lights, x, y, norm=False).permute(0,2,3,1,4).unsqueeze(1)#B,1,H,W,L,3
     #la = 1/torch.linalg.norm(light_dir, axis=4, keepdims=True).reshape((1,1,H,W,12,1))
-    la = torch.ones((1, 1, H, W, L, 1), device=surface.device)
+    la = torch.ones((B, 1, H, W, L, 1), device=surface.device)
     #light_dir = normalize(light_dir).reshape((1,1,H,W,12,3))
     light_dir = tfunc.normalize(light_dir, dim=-1)
 
     roughness = (torch.ones((1, 1, 1, 1, 1, 1)) * 0.5).to(surface.device)
     perceptual_roughness = roughness ** 0.5
 
-    N = getNormals(surface.unsqueeze(0), x=x, y=y)[:, :, :, :, None, :]  # 1,1,H,W,1,3
-    V = getVectors(surface.unsqueeze(0), camera, x=x, y=y).permute(0, 2, 3, 1, 4)[None]  # 1,1,H,W,1,3
-    L = getVectors(surface.unsqueeze(0), lights, x=x, y=y).permute(0, 2, 3, 1, 4)[None]  # 1,1,H,W,L,3
+    N = getNormals(surface, x=x, y=y)[:, :, :, :, None, :]  # 1,1,H,W,1,3
+    V = getVectors(surface, camera, x=x, y=y).permute(0, 2, 3, 1, 4).unsqueeze(1)  # 1,1,H,W,1,3
+    L = getVectors(surface, lights, x=x, y=y).permute(0, 2, 3, 1, 4).unsqueeze(1) # 1,1,H,W,L,3
 
     #N = getNormals(surface.unsqueeze(0), x=W, y=H)
     #V = getVectors(surface.unsqueeze(0), camera, x=W, y=H)
