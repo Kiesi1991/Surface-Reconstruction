@@ -1,4 +1,5 @@
 from utils import *
+from filament_renderer import filament_renderer
 
 class PhongShading():
     def __init__(self,
@@ -27,4 +28,20 @@ class PhongShading():
 
         return (I / I.max()).float()
 
+class FilamentShading():
+    def __init__(self,
+                    camera, lights,
+                    specular=0.8, diffuse=0.8,
+                    ambient=0.5, shininess=50,
+                    device='cpu'):
+        self.specular = specular
+        self.diffuse = diffuse
+        self. ambient = ambient
+        self. shininess = shininess
+        self. camera = camera.to(device)
+        self.lights = lights.to(device)
+        self.device = device
+    def forward(self, surface):
+        color = filament_renderer(surface, self.camera, self.lights).permute(0, 4, 2, 3, 1, 5)[None].squeeze(0).squeeze(-1).squeeze(-1)
+        return color
 

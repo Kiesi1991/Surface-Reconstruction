@@ -36,11 +36,13 @@ class zPrediction(nn.Module):
 class ResidualNetwork(nn.Module):
     def __init__(self, layers=6):
         super().__init__()
+        self.begin = nn.Conv2d(8, 12, kernel_size=1)
         self.res_blocks = nn.ModuleList([ResBlock(12) for i in range(layers)])
         self.head = nn.Conv2d(12, 1, kernel_size=3, padding=3//2)
 
     def forward(self, x):
         #ftrs = []
+        x = self.begin(x)
         for block in self.res_blocks:
             x = block(x)
             #ftrs.append(x)
