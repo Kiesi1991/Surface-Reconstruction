@@ -89,9 +89,11 @@ class OptimizeParameters(nn.Module):
         self.rough = nn.parameter.Parameter(torch.normal(mean=torch.tensor(0.35), std=torch.tensor(0.1)))
         self.diffuse = nn.parameter.Parameter(torch.normal(mean=torch.tensor(0.55), std=torch.tensor(0.1)))
         self.f0P = nn.parameter.Parameter(torch.normal(mean=torch.tensor(0.67), std=torch.tensor(0.1)))
+        self.light_intensity = nn.parameter.Parameter(torch.ones((1, 1, 1, 1, 7, 1)))
+        self.light_color = nn.parameter.Parameter(torch.ones((1, 1, 1, 1, 7, 1)))
     def forward(self):
         color = filament_renderer(self.mesh, self.camera, self.lights,
-                                 rough=self.rough, diffuse=self.diffuse, f0P=self.f0P)
+                                 rough=self.rough, diffuse=self.diffuse, f0P=self.f0P, light_intensity=self.light_intensity, light_color=self.light_color)
         return color.squeeze(0).squeeze(0).squeeze(-1)
 
 

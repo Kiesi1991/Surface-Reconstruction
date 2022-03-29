@@ -19,7 +19,7 @@ lights = torch.tensor(locationLights)
 cameraDistance = 8.0
 camera = torch.tensor([[[[[0, 0, cameraDistance]]]]])'''
 
-def filament_renderer(surface, camera, lights, rough=0.5, diffuse=0.5, f0P=0.5):
+def filament_renderer(surface, camera, lights, rough=0.5, diffuse=0.5, f0P=0.5, light_intensity=torch.ones((1, 1, 1, 1, 1, 1)), light_color=torch.ones((1, 1, 1, 1, 1, 1))):
     surface = surface
     lights = lights.unsqueeze(1).unsqueeze(1).unsqueeze(0)
     B, H, W = surface.shape
@@ -49,8 +49,8 @@ def filament_renderer(surface, camera, lights, rough=0.5, diffuse=0.5, f0P=0.5):
     #NoV = torch.einsum('abcde, abcde -> abcd', N, V).reshape(1,1,H,W,1,1)
 
     return evaluate_point_lights(
-        light_color=torch.ones((1, 1, 1, 1, 1, 1)).to(surface.device),         # S?,C?,1,1,L?,CH
-        light_intensity=torch.ones((1, 1, 1, 1, 1, 1)).to(surface.device),     # S?,C?,1,1,L?,1
+        light_color=light_color.to(surface.device),         # S?,C?,1,1,L?,CH
+        light_intensity=light_intensity.to(surface.device),     # S?,C?,1,1,L?,1
         light_attenuation=la,                               # S,C,H,W,L,1 # MK: 1/r
         diffuseColor=(torch.ones((1, 1, 1, 1, 1, 1))*diffuse).to(surface.device),        # S?,C?,H?,W?,1,CH #MK: color from surface
         perceptual_roughness=perceptual_roughness,          # S?,C?,H?,W?,1,1 #MK: roughness**2
