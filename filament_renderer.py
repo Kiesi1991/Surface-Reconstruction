@@ -19,7 +19,7 @@ lights = torch.tensor(locationLights)
 cameraDistance = 8.0
 camera = torch.tensor([[[[[0, 0, cameraDistance]]]]])'''
 
-def filament_renderer(surface, camera, lights):
+def filament_renderer(surface, camera, lights, rough=0.5, diffuse=0.5, f0P=0.5):
     surface = surface
     lights = lights.unsqueeze(1).unsqueeze(1).unsqueeze(0)
     B, H, W = surface.shape
@@ -31,7 +31,7 @@ def filament_renderer(surface, camera, lights):
     #light_dir = normalize(light_dir).reshape((1,1,H,W,12,3))
     light_dir = tfunc.normalize(light_dir, dim=-1)
 
-    roughness = (torch.ones((1, 1, 1, 1, 1, 1)) * 0.5).to(surface.device)
+    roughness = (torch.ones((1, 1, 1, 1, 1, 1)) * rough).to(surface.device)
     perceptual_roughness = roughness ** 0.5
 
     N = getNormals(surface, x=x, y=y)[:, :, :, :, None, :]  # 1,1,H,W,1,3
@@ -52,10 +52,10 @@ def filament_renderer(surface, camera, lights):
         light_color=torch.ones((1, 1, 1, 1, 1, 1)).to(surface.device),         # S?,C?,1,1,L?,CH
         light_intensity=torch.ones((1, 1, 1, 1, 1, 1)).to(surface.device),     # S?,C?,1,1,L?,1
         light_attenuation=la,                               # S,C,H,W,L,1 # MK: 1/r
-        diffuseColor=(torch.ones((1, 1, 1, 1, 1, 1))*0.5).to(surface.device),        # S?,C?,H?,W?,1,CH #MK: color from surface
+        diffuseColor=(torch.ones((1, 1, 1, 1, 1, 1))*diffuse).to(surface.device),        # S?,C?,H?,W?,1,CH #MK: color from surface
         perceptual_roughness=perceptual_roughness,          # S?,C?,H?,W?,1,1 #MK: roughness**2
         roughness=roughness,                                # S?,C?,H?,W?,1,1 #MK: Reflexionsparameter
-        f0=(torch.ones((1, 1, 1, 1, 1, 1)) * 0.5).to(surface.device),            # S?,C?,H?,W?,1,CH? # wird aus der Diffusecolor berechnet (siehe pbr_render function)
+        f0=(torch.ones((1, 1, 1, 1, 1, 1)) * f0P).to(surface.device),            # S?,C?,H?,W?,1,CH? # wird aus der Diffusecolor berechnet (siehe pbr_render function)
         light_dir=light_dir,                                # S,C,H,W,L,3
         NoL=NoL,                                            # S,C,H,W,L,1
         view_dir=V, #.reshape(1,1,H,W,1,3),                    # S,C,H,W,1,3

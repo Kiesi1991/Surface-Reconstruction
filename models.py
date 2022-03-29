@@ -75,6 +75,28 @@ class ResBlock(nn.Module):
         return self.selu(torch.cat((fx, lx, skip), dim=1))
 
 ###############################################
+#               Optimizer                     #
+###############################################
+from filament_renderer import filament_renderer
+
+class OptimizeParameters(nn.Module):
+    def __init__(self, mesh, lights, camera):
+        super().__init__()
+        self.mesh = nn.parameter.Parameter(mesh)
+        self.lights = nn.parameter.Parameter(lights)
+        self.camera = nn.parameter.Parameter(camera)
+
+        self.rough = nn.parameter.Parameter(torch.normal(mean=torch.tensor(0.5), std=torch.tensor(0.2)))
+        self.diffuse = nn.parameter.Parameter(torch.normal(mean=torch.tensor(0.5), std=torch.tensor(0.2)))
+        self.f0P = nn.parameter.Parameter(torch.normal(mean=torch.tensor(0.5), std=torch.tensor(0.2)))
+    def forward(self):
+        color = filament_renderer(self.mesh, self.camera, self.lights,
+                                 rough=self.rough, diffuse=self.diffuse, f0P=self.f0P)
+        return color.squeeze(0).squeeze(0).squeeze(-1)
+
+
+
+###############################################
 #                  UNet                       #
 ###############################################
 
