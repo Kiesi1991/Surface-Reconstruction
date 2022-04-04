@@ -212,7 +212,7 @@ def get_distance_attenuation(
     distanceSquare = (posToLight ** 2).sum(dim=-1, keepdim=True)  # S,C,H,W,L,1
     attenuation = get_square_falloff_attenuation(distanceSquare, inv_falloff)  # S,C,H,W,L,1
     # Assume a punctual light occupies a volume of 1cm to avoid a division by 0
-    return attenuation / torch.clamp(distanceSquare, min=1e-4)  # S,C,H,W,L,1
+    return (attenuation / torch.clamp(distanceSquare, min=1e-4)) # S,C,H,W,L,1
 
 
 # from filament light_indirect.fs(specularDFG()

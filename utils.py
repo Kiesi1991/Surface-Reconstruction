@@ -46,8 +46,8 @@ def getVectors(surface, targetLocation, x, y, norm=True):
     dx = x/w
     dy = y/h
 
-    X = torch.linspace(-(w // 2) * dx, (w // 2) * dx, steps=w).unsqueeze(0)
-    Y = torch.linspace(-(h // 2) * dy, (h // 2) * dy, steps=h).unsqueeze(1)
+    X = torch.linspace(-(w // 2), (w // 2), steps=w).unsqueeze(0) * dx
+    Y = torch.linspace(-(h // 2), (h // 2), steps=h).unsqueeze(1) * dy
 
     X = X.repeat(h, 1).unsqueeze(0).repeat(b, 1, 1).unsqueeze(-1).to(device)
     Y = Y.repeat(1, w).unsqueeze(0).repeat(b, 1, 1).unsqueeze(-1).to(device)

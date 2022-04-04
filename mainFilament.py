@@ -20,7 +20,7 @@ from models import *
 length = 2
 width = 2
 
-resolution = (512, 512)
+resolution = (386, 516)
 
 # training parameters
 num_epochs = 20
@@ -70,7 +70,7 @@ for j, paras in enumerate(paras):
     trainingset = Subset(dataset, indices=trainingset_inds)
 
     testloader = DataLoader(testset, batch_size=1, shuffle=False)
-    trainloader = DataLoader(trainingset, batch_size=3, shuffle=True)
+    trainloader = DataLoader(trainingset, batch_size=4, shuffle=True)
 
     ############################################################################
     # Update and evaluate network
@@ -86,7 +86,7 @@ for j, paras in enumerate(paras):
             pred = model(x)
             pred = shader.forward((pred))
 
-            res = metric(pred, x)
+            res = metric(pred[:,:,40:-40,40:-40], x[:,:,40:-40,40:-40])
 
             yield res
 

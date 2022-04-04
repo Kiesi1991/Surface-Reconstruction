@@ -1,6 +1,6 @@
 import torch
 
-from filament import evaluate_point_lights
+from filament import evaluate_point_lights, get_distance_attenuation
 import torch.nn.functional as tfunc
 from utils import *
 
@@ -19,15 +19,17 @@ lights = torch.tensor(locationLights)
 cameraDistance = 8.0
 camera = torch.tensor([[[[[0, 0, cameraDistance]]]]])'''
 
-def filament_renderer(surface, camera, lights, rough=0.5, diffuse=0.5, f0P=0.5, light_intensity=torch.ones((1, 1, 1, 1, 1, 1)), light_color=torch.ones((1, 1, 1, 1, 1, 1))):
+def filament_renderer(surface, camera, lights, rough=0.5, diffuse=0.5, f0P=0.5, light_intensity=torch.ones((1, 1, 1, 1, 1, 1)), light_color=torch.ones((1, 1, 1, 1, 1, 1)), x=1.202888, y=1.608325):
     surface = surface
     lights = lights.unsqueeze(1).unsqueeze(1).unsqueeze(0)
     B, H, W = surface.shape
     L = lights.size()[1]
-    x = y = 1  # ???
+    #x = y = 5  # ???
     light_dir = getVectors(surface, lights, x, y, norm=False).permute(0,2,3,1,4).unsqueeze(1)#B,1,H,W,L,3
     #la = 1/torch.linalg.norm(light_dir, axis=4, keepdims=True).reshape((1,1,H,W,12,1))
-    la = torch.ones((B, 1, H, W, L, 1), device=surface.device)
+    #la = get_distance_attenuation(light_dir, torch.zeros(1,1,1,1,1,1))
+    la = torch.ones_like(light_dir.sum(dim=-1, keepdim=True))
+    #la = torch.ones((B, 1, H, W, L, 1), device=surface.device) # get_distance_attenuation, posToLight(no norm) # S,C,H,W,L,3, inv_falloff (1/r**2, torch.ones)  S?,1,1,1,L?,1
     #light_dir = normalize(light_dir).reshape((1,1,H,W,12,3))
     light_dir = tfunc.normalize(light_dir, dim=-1)
 

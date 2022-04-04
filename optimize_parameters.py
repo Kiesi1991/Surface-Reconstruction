@@ -19,26 +19,33 @@ locationLights = [[-r2, 0.0, h2], [r2, 0.0, h2],
                   [-r3, 0.0, h3], [r3, 0.0, h3],
                   [0.0, r3, h3],  [0.0, -r3, h3]]
 
-locationLights = [[0.0, -r2, h2], [r2, 0.0, h2],
+locationLights = [[0.0, -r1, h1], [r1, 0.0, h1],
+                  [0.0, r1, h1],  [-r1, 0.0, h1],
+                  [0.0, -r2, h2], [r2, 0.0, h2],
                   [0.0, r2, h2],  [-r2, 0.0, h2],
                   [0.0, -r3, h3], [r3, 0.0, h3],
-                  [0.0, r3, h3]]#,  [-r3, 0.0, h3]]
+                  [0.0, r3, h3],  [-r3, 0.0, h3]]
 
 lights = torch.tensor(locationLights)
 
 file_path = os.path.join('realSamples', '**', f'*.jpg')
 paths = glob.glob(file_path, recursive=True)
-numbers = [x[-5] for x in paths]
+numbers = [x[-6:-4] for x in paths]
 
 images = [None]*len(numbers)
 for idx, number in enumerate(numbers):
+    if number[0] == '/':
+        number = number[1]
     images[int(number)] = paths[idx]
 
 convert_tensor = transforms.ToTensor()
 
 samples = None
 for image in images:
-    imageGrayscale = imageio.imread(image)
+    try:
+        imageGrayscale = imageio.imread(image)
+    except:
+        pass
     im = convert_tensor(Image.fromarray(imageGrayscale))[0].unsqueeze(-1)
     if samples == None:
         samples = im
@@ -79,7 +86,7 @@ lr = 1e-4 * 5
 mse = torch.nn.MSELoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=0.0)
 
-epochs = 500
+epochs = 1001
 errs = []
 for epoch in range(epochs):
         pred = model.forward()
@@ -96,7 +103,8 @@ for epoch in range(epochs):
             os.mkdir(os.path.join(path, f'Epoch-{epoch}'))
             path2 = os.path.join(path, f'Epoch-{epoch}')
             print(f'Rough {model.rough.item()} Diffuse {model.diffuse.item()} f0P {model.f0P.item()} Camera {model.camera.detach()}')
-            for L in range(7):
+            num_L = samples.shape[2]
+            for L in range(num_L):
                 plt.figure(figsize=(20, 10))
                 plt.subplot(1, 2, 1)
                 plt.imshow(samples[:,:,L].cpu().detach().numpy())
@@ -112,8 +120,10 @@ for epoch in range(epochs):
                             f'Camera {model.camera.detach()}\n'
                             f'Lights {model.lights.detach()}\n'
                             f'Surface {model.mesh.detach()}\n'
-                            f'Light Intensity {model.light_intensity.detach()}\n'
-                            f'Light Color {model.light_color.detach()}')
+                            #f'Light Intensity {model.light_intensity.detach()}\n'
+                            #f'Light Color {model.light_color.detach()}\n'
+                            f'X {model.x.detach()}\n'
+                            f'Y {model.y.detach()}')
 
 '''for idx in range(8):
     im = Image.fromarray(np.uint8(pred[:,:,idx].detach().numpy()*255))

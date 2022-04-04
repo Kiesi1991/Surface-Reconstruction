@@ -47,7 +47,8 @@ class ResidualNetwork(nn.Module):
             x = block(x)
             #ftrs.append(x)
         x = self.head(x)
-        return torch.clamp(x.squeeze(1), min=-0.5, max=0.5)
+        return x.squeeze(1)
+        #return torch.clamp(x.squeeze(1), min=-0.5, max=0.5)
 
 class ResBlock(nn.Module):
     def __init__(self, in_ch):
@@ -89,11 +90,14 @@ class OptimizeParameters(nn.Module):
         self.rough = nn.parameter.Parameter(torch.normal(mean=torch.tensor(0.35), std=torch.tensor(0.1)))
         self.diffuse = nn.parameter.Parameter(torch.normal(mean=torch.tensor(0.55), std=torch.tensor(0.1)))
         self.f0P = nn.parameter.Parameter(torch.normal(mean=torch.tensor(0.67), std=torch.tensor(0.1)))
-        self.light_intensity = nn.parameter.Parameter(torch.ones((1, 1, 1, 1, 7, 1)))
-        self.light_color = nn.parameter.Parameter(torch.ones((1, 1, 1, 1, 7, 1)))
+        self.light_intensity = nn.parameter.Parameter(torch.ones((1, 1, 1, 1, 12, 1)))
+        self.light_color = nn.parameter.Parameter(torch.ones((1, 1, 1, 1, 12, 1)))
+        #self.inv_falloff = nn.parameter.Parameter(torch.ones(1, 1, 1, 1, 7, 1) * 0.005)
+        self.x = nn.parameter.Parameter(torch.tensor(1.202888))
+        self.y = nn.parameter.Parameter(torch.tensor(1.608325))
     def forward(self):
         color = filament_renderer(self.mesh, self.camera, self.lights,
-                                 rough=self.rough, diffuse=self.diffuse, f0P=self.f0P, light_intensity=self.light_intensity, light_color=self.light_color)
+                                 rough=self.rough, diffuse=self.diffuse, light_intensity=self.light_intensity, light_color=self.light_color, f0P=self.f0P, x=self.x, y=self.y)
         return color.squeeze(0).squeeze(0).squeeze(-1)
 
 
