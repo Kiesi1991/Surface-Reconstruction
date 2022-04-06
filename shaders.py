@@ -1,3 +1,5 @@
+import torch
+
 from utils import *
 from filament_renderer import filament_renderer
 
@@ -31,17 +33,46 @@ class PhongShading():
 class FilamentShading():
     def __init__(self,
                     camera, lights,
-                    specular=0.8, diffuse=0.8,
-                    ambient=0.5, shininess=50,
+                    rough=0.34326401352882385,
+                    diffuse=0.7738519906997681,
+                    f0P=0.48454031348228455,
+                    x=1.2918046712875366,
+                    y=1.454910159111023,
                     device='cpu'):
-        self.specular = specular
+        self.rough = rough
         self.diffuse = diffuse
-        self. ambient = ambient
-        self. shininess = shininess
+        self. f0P = f0P
         self. camera = camera.to(device)
         self.lights = lights.to(device)
         self.device = device
+        self.x = x
+        self.y = y
+        self.light_intensity = torch.tensor([[[[[[1.4256],
+            [1.3992],
+            [1.3907],
+            [1.4349],
+            [1.2344],
+            [1.2184],
+            [1.1475],
+            [0.9217],
+            [0.8218],
+            [0.7301],
+            [0.6995],
+            [0.7970]]]]]])
+        self.light_color = torch.tensor([[[[[[1.4256],
+            [1.3992],
+            [1.3907],
+            [1.4349],
+            [1.2344],
+            [1.2184],
+            [1.1475],
+            [0.9217],
+            [0.8218],
+            [0.7301],
+            [0.6995],
+            [0.7970]]]]]])
+
     def forward(self, surface):
-        color = filament_renderer(surface, self.camera, self.lights).permute(0, 4, 2, 3, 1, 5)[None].squeeze(0).squeeze(-1).squeeze(-1)
+        color = filament_renderer(surface, camera=self.camera, lights=self.lights, light_intensity=self.light_intensity, light_color=self.light_color, rough=self.rough, diffuse=self.diffuse, f0P=self.f0P, x=self.x, y=self.y).permute(0, 4, 2, 3, 1, 5)[None].squeeze(0).squeeze(-1).squeeze(-1)
         return color
 

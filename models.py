@@ -36,7 +36,7 @@ class zPrediction(nn.Module):
 class ResidualNetwork(nn.Module):
     def __init__(self, layers=6):
         super().__init__()
-        self.begin = nn.Conv2d(8, 12, kernel_size=1)
+        self.begin = nn.Conv2d(12, 12, kernel_size=1)
         self.res_blocks = nn.ModuleList([ResBlock(12) for i in range(layers)])
         self.head = nn.Conv2d(12, 1, kernel_size=3, padding=3//2)
 

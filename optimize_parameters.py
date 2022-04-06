@@ -120,8 +120,8 @@ for epoch in range(epochs):
                             f'Camera {model.camera.detach()}\n'
                             f'Lights {model.lights.detach()}\n'
                             f'Surface {model.mesh.detach()}\n'
-                            #f'Light Intensity {model.light_intensity.detach()}\n'
-                            #f'Light Color {model.light_color.detach()}\n'
+                            f'Light Intensity {model.light_intensity.detach()}\n'
+                            f'Light Color {model.light_color.detach()}\n'
                             f'X {model.x.detach()}\n'
                             f'Y {model.y.detach()}')
 
