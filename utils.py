@@ -10,15 +10,40 @@ import torch
 #                                    (50, 0.001),
 #                                    (100, 0.001)]
 
-def createSurface(resolution, para=[(30, 0.01)]):
+def createSurface(resolution):
     surface = np.zeros(resolution)
-    for sigma, p in para:
-        surface1 = np.random.choice(np.array([1.0, 0.0]), size=resolution, p=[p, 1.0-p])
-        var = np.random.normal(0, sigma//10, 1)[0]
-        var2 = np.random.normal(0, 0.005, 1)[0]
-        surface1 = gaussian_filter(surface1, sigma=sigma+var, mode='reflect')
-        surface += (surface1 / surface1.max()) * (0.003+var2) * ((sigma+var)/5)
+
+    x_sigma = 10
+    y_sigma = 10
+    p = 0.01
+
+    divisor = [5,1.6,1.4,1.2,1,0.8,0.5, 0.1]
+
+    for div in divisor:
+        x_var = np.random.normal(0, 1, 1)[0]
+        y_var = np.random.normal(0, 1, 1)[0]
+        for idx in range(5):
+            surface1 = np.random.choice(np.array([1.0, 0.0]), size=resolution, p=[p, 1.0 - p])
+            surface1 = gaussian_filter(surface1, sigma=((x_sigma+x_var)/div, (y_sigma+y_var)/div), mode='reflect')
+            surface1 /= surface1.max()
+            surface += surface1
+
+    surface -= surface.min()
+    surface /= surface.max()
+    h_var = np.random.normal(0, 0.002, 1)[0]
+    surface *= (0.02+h_var)
+
     return torch.from_numpy(surface)
+
+    '''for sigma, p in para:
+        surface1 = np.random.choice(np.array([1.0, 0.0]), size=resolution, p=[p, 1.0-p])
+        #var = np.random.normal(0, sigma//10, 1)[0]
+        surface1 = gaussian_filter(surface1, sigma=sigma, mode='reflect')
+        surface += (surface1 / surface1.max())# * ((sigma)/5)
+    #var2 = np.random.normal(0, 0.005, 1)[0]
+    surface = surface - surface.min()
+    surface = (surface / surface.max()) * (0.1)
+    return torch.from_numpy(surface)'''
 
 def getNormals(surface, x=4, y=2):
 
@@ -65,3 +90,12 @@ def getVectors(surface, targetLocation, x, y, norm=True):
 def normalize(vector):
     Norms = torch.linalg.norm(vector, axis=4, keepdims=True)
     return vector/Norms
+
+def surface_height_distance(surface):
+    #heightDistance1 = surface[:,1:,:] - surface[:,:-1,:]
+    #heightDistance2 = surface[:,:,1:] - surface[:,:,:-1]
+
+    mse = torch.nn.MSELoss()
+    err1 = mse(surface[:,1:,:], surface[:,:-1,:])
+    err2 = mse(surface[:,:,1:], surface[:,:,:-1])
+    return err1 + err2

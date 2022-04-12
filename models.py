@@ -79,6 +79,7 @@ class ResBlock(nn.Module):
 #               Optimizer                     #
 ###############################################
 from filament_renderer import filament_renderer
+from scanData import get_light_attenuation
 
 class OptimizeParameters(nn.Module):
     def __init__(self, mesh, lights, camera):
@@ -87,16 +88,40 @@ class OptimizeParameters(nn.Module):
         self.lights = nn.parameter.Parameter(lights)
         self.camera = nn.parameter.Parameter(camera)
 
-        self.rough = nn.parameter.Parameter(torch.normal(mean=torch.tensor(0.35), std=torch.tensor(0.1)))
-        self.diffuse = nn.parameter.Parameter(torch.normal(mean=torch.tensor(0.55), std=torch.tensor(0.1)))
-        self.f0P = nn.parameter.Parameter(torch.normal(mean=torch.tensor(0.67), std=torch.tensor(0.1)))
-        self.light_intensity = nn.parameter.Parameter(torch.ones((1, 1, 1, 1, 12, 1)))
-        self.light_color = nn.parameter.Parameter(torch.ones((1, 1, 1, 1, 12, 1)))
+        self.rough = nn.parameter.Parameter(torch.normal(mean=torch.tensor(0.42), std=torch.tensor(0.1)))
+        self.diffuse = nn.parameter.Parameter(torch.normal(mean=torch.tensor(0.1), std=torch.tensor(0.1)))
+        self.f0P = nn.parameter.Parameter(torch.normal(mean=torch.tensor(0.85), std=torch.tensor(0.1)))
+        self.light_intensity = nn.parameter.Parameter(torch.tensor([[[[[[1.6278],
+            [1.5823],
+            [1.5398],
+            [1.6498],
+            [1.2958],
+            [1.2754],
+            [1.2626],
+            [1.0846],
+            [1.0133],
+            [0.9554],
+            [0.8036],
+            [1.0411]]]]]]))
+        self.light_color = nn.parameter.Parameter(torch.tensor([[[[[[1.6278],
+            [1.5823],
+            [1.5398],
+            [1.6498],
+            [1.2958],
+            [1.2754],
+            [1.2626],
+            [1.0846],
+            [1.0133],
+            [0.9554],
+            [0.8036],
+            [1.0411]]]]]]))
         #self.inv_falloff = nn.parameter.Parameter(torch.ones(1, 1, 1, 1, 7, 1) * 0.005)
-        self.x = nn.parameter.Parameter(torch.tensor(1.202888))
-        self.y = nn.parameter.Parameter(torch.tensor(1.608325))
+        self.x = nn.parameter.Parameter(torch.tensor(0.6881730556488037))
+        self.y = torch.tensor(1.608325) #nn.parameter.Parameter(torch.tensor(1.608325))
+        self.la = get_light_attenuation()
     def forward(self):
-        color = filament_renderer(self.mesh, self.camera, self.lights,
+        self.y = self.x * (516 / 386)
+        color = filament_renderer(self.mesh, self.camera, self.lights, la=self.la,
                                  rough=self.rough, diffuse=self.diffuse, light_intensity=self.light_intensity, light_color=self.light_color, f0P=self.f0P, x=self.x, y=self.y)
         return color.squeeze(0).squeeze(0).squeeze(-1)
 

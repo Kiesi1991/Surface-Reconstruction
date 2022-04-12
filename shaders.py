@@ -2,6 +2,7 @@ import torch
 
 from utils import *
 from filament_renderer import filament_renderer
+from scanData import get_light_attenuation
 
 class PhongShading():
     def __init__(self,
@@ -33,11 +34,11 @@ class PhongShading():
 class FilamentShading():
     def __init__(self,
                     camera, lights,
-                    rough=0.34326401352882385,
-                    diffuse=0.7738519906997681,
-                    f0P=0.48454031348228455,
-                    x=1.2918046712875366,
-                    y=1.454910159111023,
+                    rough=0.262628436088562,
+                    diffuse=0.43219268321990967,
+                    f0P=0.8909110426902771 ,
+                    x=0.6803215146064758,
+                    y=0.9094781875610352,
                     device='cpu'):
         self.rough = rough
         self.diffuse = diffuse
@@ -47,32 +48,34 @@ class FilamentShading():
         self.device = device
         self.x = x
         self.y = y
-        self.light_intensity = torch.tensor([[[[[[1.4256],
-            [1.3992],
-            [1.3907],
-            [1.4349],
-            [1.2344],
-            [1.2184],
-            [1.1475],
-            [0.9217],
-            [0.8218],
-            [0.7301],
-            [0.6995],
-            [0.7970]]]]]])
-        self.light_color = torch.tensor([[[[[[1.4256],
-            [1.3992],
-            [1.3907],
-            [1.4349],
-            [1.2344],
-            [1.2184],
-            [1.1475],
-            [0.9217],
-            [0.8218],
-            [0.7301],
-            [0.6995],
-            [0.7970]]]]]])
+        self.light_intensity = torch.tensor([[[[[[1.7605],
+            [1.6859],
+            [1.5881],
+            [1.7304],
+            [1.4134],
+            [1.4337],
+            [1.3288],
+            [1.1774],
+            [1.1116],
+            [1.0085],
+            [0.8087],
+            [1.0708]]]]]])
+        self.light_color = torch.tensor([[[[[[1.7605],
+            [1.6859],
+            [1.5881],
+            [1.7304],
+            [1.4134],
+            [1.4337],
+            [1.3288],
+            [1.1774],
+            [1.1116],
+            [1.0085],
+            [0.8087],
+            [1.0708]]]]]])
+
+        self.la = get_light_attenuation().to(device)
 
     def forward(self, surface):
-        color = filament_renderer(surface, camera=self.camera, lights=self.lights, light_intensity=self.light_intensity, light_color=self.light_color, rough=self.rough, diffuse=self.diffuse, f0P=self.f0P, x=self.x, y=self.y).permute(0, 4, 2, 3, 1, 5)[None].squeeze(0).squeeze(-1).squeeze(-1)
+        color = filament_renderer(surface, camera=self.camera, lights=self.lights,la=self.la, light_intensity=self.light_intensity, light_color=self.light_color, rough=self.rough, diffuse=self.diffuse, f0P=self.f0P, x=self.x, y=self.y).permute(0, 4, 2, 3, 1, 5)[None].squeeze(0).squeeze(-1).squeeze(-1)
         return color
 
