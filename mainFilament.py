@@ -27,7 +27,7 @@ width = 2
 resolution = (386, 516)
 
 # training parameters
-num_epochs = 20
+num_epochs = 40
 lr = 1e-4
 crop = 50
 
@@ -83,13 +83,15 @@ lights = torch.tensor(locationLights)
 cameraDistance = 8.0
 camera = torch.tensor([[[[[0.1771, 0.2292, 9.4752]]]]])
 
-'''surface = torch.tensor(createSurface(resolution, para=paras[0]).tolist()).unsqueeze(0)
-shader = FilamentShading(camera, lights, device='cpu')
-im = shader.forward(surface)
+show_fake = True
+if show_fake:
+    surface = torch.tensor(createSurface(resolution).tolist()).unsqueeze(0)
+    shader = FilamentShading(camera, lights, device='cpu')
+    im = shader.forward(surface)
 
-for im_nr in range(12):
-    plt.imshow(im[0,im_nr,:,:].cpu().detach().numpy())
-    plt.show()'''
+    for im_nr in range(12):
+        plt.imshow(im[0,im_nr,:,:].cpu().detach().numpy())
+        plt.show()
 
 model = ResidualNetwork()
 if torch.cuda.is_available():
@@ -200,16 +202,19 @@ for epoch in range(num_epochs):
         plt.figure(figsize=(20, 10))
         plt.subplot(1, 2, 1)
         plt.imshow(samples[L, crop:-crop, crop:-crop].cpu().detach().numpy())
+        plt.clim(0, 1.0)
 
         pred = model(samples.unsqueeze(0).to(next(model.parameters()).device))
         pred = shader.forward(pred).squeeze(0)
         plt.subplot(1, 2, 2)
         plt.imshow(pred[L, crop:-crop, crop:-crop].cpu().detach().numpy())
+        plt.clim(0, 1.0)
 
         plt.savefig(os.path.join(path, f'{epoch}', f'True-{L}.png'))
         plt.close()
 
         plt.imshow(im.squeeze(0)[L, crop:-crop, crop:-crop].cpu().detach().numpy())
+        plt.clim(0, 1.0)
         plt.savefig(os.path.join(path, f'{epoch}', f'Fake-{L}.png'))
         plt.close()
 
@@ -219,9 +224,11 @@ for epoch in range(num_epochs):
         plt.figure(figsize=(20, 10))
         plt.subplot(1, 2, 1)
         plt.imshow(t)
+        plt.clim(0, 1.0)
 
         plt.subplot(1, 2, 2)
         plt.imshow(p)
+        plt.clim(0, 1.0)
 
         plt.savefig(os.path.join(path, f'{epoch}', f'TrueRGB-{L}.png'))
         plt.close()

@@ -13,25 +13,31 @@ import torch
 def createSurface(resolution):
     surface = np.zeros(resolution)
 
-    x_sigma = 10
-    y_sigma = 10
-    p = 0.01
+    p = 0.05
+    h = 0.01
 
-    divisor = [5,1.6,1.4,1.2,1,0.8,0.5, 0.1]
+    sigmas = [2.5,5,10,15]
 
-    for div in divisor:
-        x_var = np.random.normal(0, 1, 1)[0]
-        y_var = np.random.normal(0, 1, 1)[0]
-        for idx in range(5):
-            surface1 = np.random.choice(np.array([1.0, 0.0]), size=resolution, p=[p, 1.0 - p])
-            surface1 = gaussian_filter(surface1, sigma=((x_sigma+x_var)/div, (y_sigma+y_var)/div), mode='reflect')
-            surface1 /= surface1.max()
-            surface += surface1
+    for sigma in sigmas:
+        x_var = np.random.normal(0, sigma*0.2, 1)[0]
+        y_var = np.random.normal(0, sigma*0.2, 1)[0]
+        p_var = np.clip(np.random.normal(0, p * 0.8, 1)[0], 0.00001, 0.05)
+        surface1 = np.zeros_like(surface)
+        for _ in range(3):
+            surface1 += random_walk(size=resolution, p=p, p_var=p_var)
+        surface1 = np.clip(surface1, 0.0, 1.0)
+        #surface1 = np.random.choice(np.array([1.0, 0.0]), size=resolution, p=[(p+p_var), 1.0 - (p+p_var)])
+        surface1 = gaussian_filter(surface1, sigma=sigma+x_var+y_var, mode='reflect')
+        surface1 /= surface1.max()
+        surface1 *= (sigma+(x_var+y_var))
+        surface += surface1
 
     surface -= surface.min()
     surface /= surface.max()
-    h_var = np.random.normal(0, 0.002, 1)[0]
-    surface *= (0.02+h_var)
+    h_var = np.random.normal(0, h*0.2, 1)[0]
+    surface *= (h+h_var)
+    o_var = np.random.normal(0, h*0.1, 1)[0]
+    surface -= ((surface.max() / 2.0)+o_var)
 
     return torch.from_numpy(surface)
 
@@ -44,6 +50,30 @@ def createSurface(resolution):
     surface = surface - surface.min()
     surface = (surface / surface.max()) * (0.1)
     return torch.from_numpy(surface)'''
+
+def random_walk(size, p, p_var):
+    length = np.random.randint(100, size=1)[0] + 1
+    mask = surface1 = np.random.choice(np.array([1.0, 0.0]), size=size, p=[(p+p_var), 1.0 - (p+p_var)])
+    actions = np.random.randint(4, size=length)+1 # actions: 1=right, 2=left, 3=up, 4=down
+    h,w = size
+    surface = np.zeros((h+length*2,w+length*2))
+    surface[length:-length,length:-length] = mask
+    x = 0
+    y = 0
+    for action in actions:
+        if action == 1:
+            x += 1
+        if action == 2:
+            x -= 1
+        if action == 3:
+            y -= 1
+        if action == 4:
+            y += 1
+        surface[length+y:(h+length+y),length+x:(w+length+x)] += mask
+
+    return np.clip(surface[length:-length,length:-length], 0.0, 1.0)
+
+
 
 def getNormals(surface, x=4, y=2):
 
