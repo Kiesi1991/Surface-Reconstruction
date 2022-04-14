@@ -13,7 +13,7 @@ import torch
 def createSurface(resolution):
     surface = np.zeros(resolution)
 
-    p = 0.05
+    p = 0.4
     h = 0.01
 
     sigmas = [2.5,5,10,15]
@@ -53,7 +53,7 @@ def createSurface(resolution):
 
 def random_walk(size, p, p_var):
     length = np.random.randint(100, size=1)[0] + 1
-    mask = surface1 = np.random.choice(np.array([1.0, 0.0]), size=size, p=[(p+p_var), 1.0 - (p+p_var)])
+    mask = np.random.choice(np.array([1.0, 0.0]), size=size, p=[(p+p_var), 1.0 - (p+p_var)])
     actions = np.random.randint(4, size=length)+1 # actions: 1=right, 2=left, 3=up, 4=down
     h,w = size
     surface = np.zeros((h+length*2,w+length*2))
@@ -69,7 +69,7 @@ def random_walk(size, p, p_var):
             y -= 1
         if action == 4:
             y += 1
-        surface[length+y:(h+length+y),length+x:(w+length+x)] += mask
+        surface[length+y:(h+length+y),length+x:(w+length+x)] += mask #kumlative summer, scatter, conv
 
     return np.clip(surface[length:-length,length:-length], 0.0, 1.0)
 

@@ -12,24 +12,20 @@ from utils import surface_height_distance
 resolution = (386, 516)
 
 cameraDistance = 8.
-camera = torch.tensor([[[[[0.1145, 0.2660, 8.8326]]]]])
+camera = torch.tensor([[[[[0, 0, cameraDistance]]]]])
 
 h1, h2, h3 = 0.79, 3.29, 5.79
 r1, r2, r3 = 2.975, 2.660705446, 1.937933168
 
-locationLights = [[-r2, 0.0, h2], [r2, 0.0, h2],
-                  [0.0, r2, h2],  [0.0, -r2, h2],
-                  [-r3, 0.0, h3], [r3, 0.0, h3],
-                  [0.0, r3, h3],  [0.0, -r3, h3]]
 
-locationLights = [[0.0, -r1, h1], [r1, 0.0, h1],
-                  [0.0, r1, h1],  [-r1, 0.0, h1],
+locationLights = [[0.0, -r3, h3], [r3, 0.0, h3],
+                  [0.0, r3, h3],  [-r3, 0.0, h3],
                   [0.0, -r2, h2], [r2, 0.0, h2],
                   [0.0, r2, h2],  [-r2, 0.0, h2],
-                  [0.0, -r3, h3], [r3, 0.0, h3],
-                  [0.0, r3, h3],  [-r3, 0.0, h3]]
+                  [0.0, -r1, h1], [r1, 0.0, h1],
+                  [0.0, r1, h1],  [-r1, 0.0, h1]]
 
-locationLights = [[ 0.5025, -2.4060,  1.3907],
+'''locationLights = [[ 0.5025, -2.4060,  1.3907],
         [ 2.3715, -0.2657,  1.3804],
         [-0.1163,  2.3329,  1.4274],
         [-2.2779,  0.3018,  1.4543],
@@ -40,7 +36,7 @@ locationLights = [[ 0.5025, -2.4060,  1.3907],
         [ 0.2359, -2.4625,  5.0852],
         [ 2.5166, -0.1509,  5.1509],
         [ 0.2503,  2.2478,  5.2799],
-        [-2.3585, -0.1042,  5.3759]]
+        [-2.3585, -0.1042,  5.3759]]'''
 
 lights = torch.tensor(locationLights)
 
@@ -98,7 +94,7 @@ while True:
     else:
         folder += 1
 
-lr = 1e-4
+lr = 1e-3
 mse = torch.nn.MSELoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=0.0)
 
@@ -107,7 +103,7 @@ errs = []
 for epoch in range(epochs):
         pred = model.forward()
         surfaceDistance = surface_height_distance(model.mesh)
-        err = mse(pred, samples) + 1.0 * surfaceDistance
+        err = mse(torch.exp(pred), torch.exp(samples)) #+ 1.0 * surfaceDistance
         errs.append(err.item())
         optimizer.zero_grad()
         err.backward()

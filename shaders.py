@@ -34,11 +34,11 @@ class PhongShading():
 class FilamentShading():
     def __init__(self,
                     camera, lights,
-                    rough=0.262628436088562,
-                    diffuse=0.43219268321990967,
-                    f0P=0.8909110426902771 ,
-                    x=0.6803215146064758,
-                    y=0.9094781875610352,
+                    rough=0.7913722395896912,
+                    diffuse=1.4271979331970215,
+                    f0P=1.3222495317459106 ,
+                    x=1.2028881311416626,
+                    y=1.6083250045776367,
                     device='cpu'):
         self.rough = rough
         self.diffuse = diffuse
@@ -48,30 +48,19 @@ class FilamentShading():
         self.device = device
         self.x = x
         self.y = y
-        self.light_intensity = torch.tensor([[[[[[1.7605],
-            [1.6859],
-            [1.5881],
-            [1.7304],
-            [1.4134],
-            [1.4337],
-            [1.3288],
-            [1.1774],
-            [1.1116],
-            [1.0085],
-            [0.8087],
-            [1.0708]]]]]])
-        self.light_color = torch.tensor([[[[[[1.7605],
-            [1.6859],
-            [1.5881],
-            [1.7304],
-            [1.4134],
-            [1.4337],
-            [1.3288],
-            [1.1774],
-            [1.1116],
-            [1.0085],
-            [0.8087],
-            [1.0708]]]]]])
+        self.light_intensity = torch.tensor([[[[[[0.6317],
+            [0.5862],
+            [0.5012],
+            [0.6062],
+            [1.4130],
+            [1.2370],
+            [0.9007],
+            [0.6430],
+            [2.9547],
+            [2.6376],
+            [2.1030],
+            [2.8895]]]]]])
+        self.light_color = torch.ones_like(self.light_intensity)
 
         self.la = get_light_attenuation().to(device)
 
