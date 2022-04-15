@@ -1,8 +1,5 @@
-import torch
-
 from utils import *
 from filament_renderer import filament_renderer
-from scanData import get_light_attenuation
 
 class PhongShading():
     def __init__(self,

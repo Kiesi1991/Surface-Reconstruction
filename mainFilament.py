@@ -1,13 +1,8 @@
-import os.path
-
-import torch
-from torch import nn
 from torch.utils.data import DataLoader
 from torch.utils.data import Subset
 
 from utils import *
 import numpy as np
-from shaders import PhongShading
 from dataset import DummySet
 from PIL import Image
 from statistics import mean
@@ -27,7 +22,7 @@ width = 2
 resolution = (386, 516)
 
 # training parameters
-num_epochs = 20
+num_epochs = 40
 lr = 1e-4
 crop = 50
 
@@ -105,6 +100,9 @@ trainingset = Subset(dataset, indices=trainingset_inds)
 testloader = DataLoader(testset, batch_size=1, shuffle=False)
 trainloader = DataLoader(trainingset, batch_size=4, shuffle=True)
 
+path = os.path.join('results', '205', 'Epoch-2800')
+optimized_surface = torch.load(os.path.join(path, 'surface.pt'))
+
 ############################################################################
 # Update and evaluate network
 ############################################################################
@@ -168,6 +166,7 @@ while True:
 
 im_nr = [1, 5]
 diff = []
+diff_surface = []
 vals = []
 trains = []
 for epoch in range(num_epochs):
@@ -175,9 +174,9 @@ for epoch in range(num_epochs):
     errs = update(model, trainloader, mse, optimizer)
     val_errs = evaluate(model, testloader, mse)
 
-    surface_im = testset[0][0].unsqueeze(0).cuda()
-    im = shader.forward(surface_im)
-    pred = model(im)
+    surface_im = testset[0][0].unsqueeze(0).cuda() # 1,H,W
+    im = shader.forward(surface_im) # 1,L,H,W
+    pred = model(im) # 1,H,W
 
     mse_surface = mse(surface_im, pred).item()
 
@@ -185,7 +184,8 @@ for epoch in range(num_epochs):
     vals.append(mean(val_errs))
     trains.append(mean(errs))
 
-
+    true_mse_surface = torch.log(mse(optimized_surface, pred.cpu().detach())+1).item()
+    diff_surface.append(true_mse_surface)
     for L in range(12):
         plt.figure(figsize=(20, 10))
         plt.subplot(1, 2, 1)
@@ -221,6 +221,33 @@ for epoch in range(num_epochs):
         plt.savefig(os.path.join(path, f'{epoch}', f'TrueRGB-{L}.png'))
         plt.close()
 
+        x = np.linspace(0, len(diff_surface) - 1, len(diff_surface))
+        plt.plot(x, diff_surface, label='difference')
+        plt.xlabel('epoch')
+        plt.ylabel('Error')
+        plt.legend()
+        plt.savefig(os.path.join(path, f'difference-surface.png'))
+        plt.close()
+
+        x = np.linspace(0, len(diff) - 1, len(diff))
+        plt.plot(x, diff, label='difference')
+        plt.plot(x, vals, label='validation')
+        plt.plot(x, trains, label='training')
+        plt.xlabel('epoch')
+        plt.ylabel('Error')
+        plt.legend()
+        plt.savefig(os.path.join(path, f'training-errors.png'))
+        plt.close()
+
+        torch.save(model.state_dict(), os.path.join(path, f'{epoch}', 'model.pt'))
+
+        # loading model
+        '''
+        model = TheModelClass(*args, **kwargs)
+        model.load_state_dict(torch.load(PATH))
+        model.eval()
+        '''
+
 
 
 
@@ -240,14 +267,6 @@ for epoch in range(num_epochs):
 
     print(f'Epoch {epoch} AVG Mean {mean(errs):.6f} AVG Val Mean {mean(val_errs):.6f} MSE Surface {mse_surface}')
 
-x = np.linspace(0, len(diff)-1, len(diff))
-plt.plot(x, diff, label='difference')
-plt.plot(x, vals, label='validation')
-plt.plot(x, trains, label='training')
-plt.xlabel('epoch')
-plt.ylabel('Error')
-plt.legend()
-plt.savefig(os.path.join(path, f'{epoch}.png'))
-plt.close()
+
 
 print('TheEnd')

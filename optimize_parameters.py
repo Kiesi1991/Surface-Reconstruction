@@ -6,7 +6,6 @@ from torchvision import transforms
 from models import OptimizeParameters
 import matplotlib.pyplot as plt
 import cv2
-from utils import surface_height_distance
 
 
 resolution = (386, 516)

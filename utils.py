@@ -1,19 +1,16 @@
 from scipy.ndimage import gaussian_filter
 import numpy as np
 import torch
-
-#[(4, 0.0001),
-#                                    (6, 0.0005),
-#                                    (8, 0.0005),
-#                                    (10, 0.001),
-#                                    (20, 0.001),
-#                                    (50, 0.001),
-#                                    (100, 0.001)]
+import os
+import glob
+import imageio
+from PIL import Image
+from torchvision import transforms
 
 def createSurface(resolution):
     surface = np.zeros(resolution)
 
-    p = 0.4
+    p = 0.02
     h = 0.01
 
     sigmas = [2.5,5,10,15]
@@ -121,11 +118,34 @@ def normalize(vector):
     Norms = torch.linalg.norm(vector, axis=4, keepdims=True)
     return vector/Norms
 
-def surface_height_distance(surface):
-    #heightDistance1 = surface[:,1:,:] - surface[:,:-1,:]
-    #heightDistance2 = surface[:,:,1:] - surface[:,:,:-1]
+def get_light_attenuation():
+    convert_tensor = transforms.ToTensor()
 
-    mse = torch.nn.MSELoss()
-    err1 = mse(surface[:,1:,:], surface[:,:-1,:])
-    err2 = mse(surface[:,:,1:], surface[:,:,:-1])
-    return err1 + err2
+    file_path = os.path.join('Sensor_2', '**', f'*.jpg')
+    paths = glob.glob(file_path, recursive=True)
+
+    images={}
+    for idx, path in enumerate(paths):
+        number = path[-6:-4]
+        if number[0] == '/':
+            number = number[1]
+        number = int(number)
+        im = imageio.imread(path)
+        im = convert_tensor(Image.fromarray(im))[0].unsqueeze(-1)
+        if number not in images:
+            images[number] = im
+        else:
+            images[number] = torch.cat((images[number], im), dim=-1)
+
+
+
+    light_attenuation = None
+    for im_nr in sorted(images.keys()) :
+        im = torch.from_numpy(gaussian_filter(torch.median(images[im_nr], dim=2)[0], sigma=5, mode='reflect'))
+        images[im_nr] = im / im.max()
+        if light_attenuation == None:
+            light_attenuation = images[im_nr].unsqueeze(-1)
+        else:
+            light_attenuation = torch.cat((light_attenuation, images[im_nr].unsqueeze(-1)), dim=-1)
+
+    return light_attenuation.unsqueeze(0).unsqueeze(0).unsqueeze(-1) # S,C,H,W,L,1

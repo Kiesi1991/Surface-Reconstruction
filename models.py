@@ -2,6 +2,8 @@ from torch import nn
 import torch
 import torchvision
 import torch.nn.functional as F
+from filament_renderer import filament_renderer
+from utils import get_light_attenuation
 
 ###############################################
 #                ZPrediction                  #
@@ -78,9 +80,6 @@ class ResBlock(nn.Module):
 ###############################################
 #               Optimizer                     #
 ###############################################
-from filament_renderer import filament_renderer
-from scanData import get_light_attenuation
-import os
 
 class OptimizeParameters(nn.Module):
     def __init__(self, mesh, lights, camera):
