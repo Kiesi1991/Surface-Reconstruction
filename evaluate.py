@@ -8,6 +8,7 @@ from torchvision import transforms
 import glob
 import imageio
 from PIL import Image
+from utils import get_light_attenuation, getVectors
 
 h1, h2, h3 = 0.79, 3.29, 5.79
 r1, r2, r3 = 2.975, 2.660705446, 1.937933168
@@ -68,17 +69,29 @@ shader = FilamentShading(camera, lights)
 
 pred_images = shader.forward(surface)
 
+la = get_light_attenuation()
+length_per_pixel = 1.608325 / 512
+
+samples = samples[:,50:-50,50:-50]
+pred_images = pred_images[0,:,50:-50,50:-50]
+surface = surface[:,50:-50,50:-50].detach() # B=1,H,W
+lights = lights.unsqueeze(1).unsqueeze(1).unsqueeze(0) # 1,L,1,1,3
+x = (1.202888087 * 286) / 386
+y = (1.608325 * 416) / 516
+distance = getVectors(surface,lights, x, y, norm=False)
+distance = torch.linalg.norm(distance, axis=4, keepdims=True)
+la2 = 1/ (distance ** 2)
 
 for L in range(12):
 
-    real = cv2.cvtColor(samples[L,50:-50,50:-50].cpu().detach().numpy(), cv2.COLOR_GRAY2RGB)
+    real = cv2.cvtColor(samples[L,:,:].cpu().detach().numpy(), cv2.COLOR_GRAY2RGB)
 
     plt.figure(figsize=(20, 10))
     plt.subplot(1, 2, 1)
     plt.imshow(real)
     plt.clim(0, 1.0)
 
-    pred = cv2.cvtColor(pred_images[0,L,50:-50,50:-50].cpu().detach().numpy(), cv2.COLOR_GRAY2RGB)
+    pred = cv2.cvtColor(pred_images[L,:,:].cpu().detach().numpy(), cv2.COLOR_GRAY2RGB)
 
     plt.subplot(1, 2, 2)
     plt.imshow(pred)
@@ -87,7 +100,19 @@ for L in range(12):
     plt.savefig(os.path.join(path, f'real-vs-pred-{L}.png'))
     plt.close()
 
-surface = surface.squeeze()[50:-50,50:-50].cpu().detach().numpy()
+    plt.figure(figsize=(20, 10))
+    plt.subplot(1, 2, 1)
+    plt.imshow(la[0,0,50:-50,50:-50,L,0])
+    #plt.clim(0, 1.0)
+
+    plt.subplot(1, 2, 2)
+    plt.imshow(la2[0,L,:,:,0])
+    #plt.clim(0, 1.0)
+
+    plt.savefig(os.path.join(path, f'la-{L}.png'))
+    plt.close()
+
+surface = surface.squeeze().cpu().detach().numpy()
 plt.imshow(surface)
 plt.savefig(os.path.join(path, f'surface.png'))
 plt.close()
