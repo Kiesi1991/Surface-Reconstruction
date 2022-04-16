@@ -46,7 +46,7 @@ camera = torch.tensor([[[[[-0.4919,  0.8713,  7.7930]]]]])
 #     get real images           #
 #################################
 
-path = 'part8'
+path = 'part9'
 file_path = os.path.join(path, '**', f'*.jpg')
 paths = glob.glob(file_path, recursive=True)
 numbers = [x[-6:-4] for x in paths]
