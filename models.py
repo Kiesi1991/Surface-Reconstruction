@@ -89,8 +89,8 @@ class OptimizeParameters(nn.Module):
         #surface = torch.load(os.path.join(path, 'surface.pt'))
         self.mesh = nn.parameter.Parameter(mesh)
 
-        self.lights = lights
-        self.camera = camera #nn.parameter.Parameter(camera)
+        self.lights = nn.Parameter(lights)
+        self.camera = nn.parameter.Parameter(camera)
 
         #self.rough = nn.parameter.Parameter(torch.normal(mean=torch.tensor(0.5), std=torch.tensor(0.1)))
         self.rough = nn.parameter.Parameter(torch.tensor(0.5))

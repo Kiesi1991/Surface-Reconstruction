@@ -20,19 +20,33 @@ locationLights = [[0.0, -r3, h3], [r3, 0.0, h3],
                   [0.0, -r1, h1], [r1, 0.0, h1],
                   [0.0, r1, h1],  [-r1, 0.0, h1]]
 
+locationLights = [[ 0.4610, -2.3101,  5.4689],
+        [ 2.0637, -0.1640,  5.8244],
+        [ 0.0524,  2.2153,  5.6867],
+        [-1.9160,  0.4533,  5.9731],
+        [ 0.2925, -2.0323,  3.9218],
+        [ 2.0486, -0.1973,  3.8636],
+        [ 0.0061,  2.4624,  3.6414],
+        [-2.2224,  0.4564,  3.7725],
+        [ 0.1593, -2.2010,  1.5920],
+        [ 2.2989,  0.0636,  1.4572],
+        [-0.0257,  2.6306,  1.1837],
+        [-2.0910,  0.2743,  1.6005]]
+
 
 lights = torch.tensor(locationLights)
 
 cameraDistance = 8.
 camera = torch.tensor([[[[[0, 0, cameraDistance]]]]])
 
-path = os.path.join('results', '193', 'Epoch-10000')
+camera = torch.tensor([[[[[-0.4919,  0.8713,  7.7930]]]]])
+
 
 #################################
 #     get real images           #
 #################################
 
-path = 'part5'
+path = 'part8'
 file_path = os.path.join(path, '**', f'*.jpg')
 paths = glob.glob(file_path, recursive=True)
 numbers = [x[-6:-4] for x in paths]
@@ -60,7 +74,7 @@ for image in images:
 ############################
 
 model = ResidualNetwork()
-model.load_state_dict(torch.load(os.path.join('results', '215', '39', 'model.pt')))
+model.load_state_dict(torch.load(os.path.join('results', '223', '39', 'model.pt')))
 model.eval()
 
 surface = model.forward(samples.unsqueeze(0))
@@ -81,6 +95,19 @@ y = (1.608325 * 416) / 516
 distance = getVectors(surface,lights, x, y, norm=False)
 distance = torch.linalg.norm(distance, axis=4, keepdims=True)
 la2 = 1/ (distance ** 2)
+
+light_intensity = torch.tensor([[0.8111],
+            [0.7329],
+            [0.6446],
+            [0.7719],
+            [1.5840],
+            [1.3656],
+            [1.0796],
+            [0.7442],
+            [1.9819],
+            [1.7916],
+            [1.6281],
+            [1.9292]])
 
 for L in range(12):
 

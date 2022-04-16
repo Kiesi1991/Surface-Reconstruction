@@ -99,19 +99,18 @@ optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=0.0)
 
 epochs = 10001
 errs = []
+errors = []
 for epoch in range(epochs):
         pred = model.forward()
-        surfaceDistance = surface_height_distance(model.mesh)
-        err = mse(torch.exp(pred), torch.exp(samples)) #+ 1.0 * surfaceDistance
+        err = mse(pred, samples)
         errs.append(err.item())
         optimizer.zero_grad()
         err.backward()
         torch.nn.utils.clip_grad_value_(model.mesh, 0.001)
         optimizer.step()
         if epoch % 10 == 0:
-            #im = Image.fromarray(np.uint8(pred[:, :, 5].detach().numpy() * 255))
-            #im.show()
             print(f'Epoch {epoch} AVG Err {statistics.mean(errs[-10:])} Surface Max {model.mesh.detach().max()} Surface Min {model.mesh.detach().min()}')
+            errors.append(statistics.mean(errs[-10:]))
         if epoch % 100 == 0:
             os.mkdir(os.path.join(path, f'Epoch-{epoch}'))
             path2 = os.path.join(path, f'Epoch-{epoch}')
@@ -145,6 +144,14 @@ for epoch in range(epochs):
                 plt.clim(0, 1.0)
 
                 plt.savefig(os.path.join(path2, f'TrueRGB-{L}.png'))
+                plt.close()
+
+                x = np.linspace(0, len(errors) - 1, len(errors))
+                plt.plot(x, errors, label='errors')
+                plt.xlabel('epoch')
+                plt.ylabel('Error')
+                plt.legend()
+                plt.savefig(os.path.join(path, f'error.png'))
                 plt.close()
 
             with open(os.path.join(path2, 'parameters.txt'), 'w') as f:
