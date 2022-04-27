@@ -141,7 +141,7 @@ def get_light_attenuation():
 
     light_attenuation = None
     for im_nr in sorted(images.keys()) :
-        im = torch.from_numpy(gaussian_filter(torch.median(images[im_nr], dim=2)[0], sigma=5, mode='reflect'))
+        im = torch.from_numpy(gaussian_filter(torch.median(images[im_nr], dim=2)[0], sigma=10, mode='reflect'))
         images[im_nr] = im / im.max()
         if light_attenuation == None:
             light_attenuation = images[im_nr].unsqueeze(-1)

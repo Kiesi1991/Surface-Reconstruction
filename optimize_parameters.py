@@ -9,7 +9,7 @@ import cv2
 import numpy as np
 import statistics
 
-def optimizeParameters(path_target='realSamples', path_results='results', lr = 1e-3, epochs = 3000):
+def optimizeParameters(path_target='realSamples', path_results='results', lr = 1e-5, epochs = 3000):
     resolution = (386, 516)
 
     cameraDistance = 8.
@@ -77,11 +77,12 @@ def optimizeParameters(path_target='realSamples', path_results='results', lr = 1
     errors = []
     for epoch in range(epochs):
             pred = model.forward()
-            err = mse(pred, samples)
+            #err = mse(pred[:,:,4:], samples[:,:,4:])
+            err = mse(torch.exp(pred), torch.exp(samples))
             errs.append(err.item())
             optimizer.zero_grad()
             err.backward()
-            torch.nn.utils.clip_grad_value_(model.mesh, 0.001)
+            #torch.nn.utils.clip_grad_value_(model.mesh, 0.001)
             optimizer.step()
             if epoch % 10 == 0:
                 # print(f'Epoch {epoch} AVG Err {statistics.mean(errs[-10:])} Surface Max {model.mesh.detach().max()} Surface Min {model.mesh.detach().min()}')

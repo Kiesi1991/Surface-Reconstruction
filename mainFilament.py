@@ -71,7 +71,7 @@ def train_NN(camera, lights, light_intensity, rough, diffuse, f0P):
     testloader = DataLoader(testset, batch_size=1, shuffle=False)
     trainloader = DataLoader(trainingset, batch_size=4, shuffle=True)
 
-    path = os.path.join('results', '205', 'Epoch-2800')
+    path = os.path.join('results', '20', 'Epoch-10000')
     optimized_surface = torch.load(os.path.join(path, 'surface.pt'))
 
     ############################################################################
