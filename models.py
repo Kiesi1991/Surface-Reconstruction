@@ -83,36 +83,59 @@ class ResBlock(nn.Module):
 ###############################################
 
 class OptimizeParameters(nn.Module):
-    def __init__(self, mesh, lights, camera, path=os.path.join('results', '17', 'Epoch-500')):
+    def __init__(self, mesh, lights, camera, path=os.path.join('results', '17', 'Epoch-500'), device='cpu'):
         super().__init__()
 
-        mesh = torch.load(os.path.join(path, 'surface.pt'))
-        camera = torch.load(os.path.join(path, 'camera.pt'))
-        lights = torch.load(os.path.join(path, 'lights.pt'))
-        rough = torch.load(os.path.join(path, 'rough.pt'))
-        diffuse = torch.load(os.path.join(path, 'diffuse.pt'))
-        f0P = torch.load(os.path.join(path, 'f0P.pt'))
-        light_intensity = torch.load(os.path.join(path, 'light_intensity.pt'))
-        self.mesh = nn.parameter.Parameter(mesh)
+        if path is not None:
+            mesh = torch.load(os.path.join(path, 'surface.pt')).to(device)
+            camera = torch.load(os.path.join(path, 'camera.pt')).to(device)
+            lights = torch.load(os.path.join(path, 'lights.pt')).to(device)
+            light_intensity = torch.load(os.path.join(path, 'light_intensity.pt')).to(device)
+            rough = torch.load(os.path.join(path, 'rough.pt')).to(device)
+            diffuse = torch.load(os.path.join(path, 'diffuse.pt')).to(device)
+            f0P = torch.load(os.path.join(path, 'f0P.pt')).to(device)
+        else:
+            rough = nn.parameter.Parameter(torch.normal(mean=torch.tensor(-0.8), std=torch.tensor(0.01))).to(device)
+            diffuse = nn.parameter.Parameter(torch.normal(mean=torch.tensor(0.6), std=torch.tensor(0.01))).to(device)
+            f0P = nn.parameter.Parameter(torch.normal(mean=torch.tensor(1.6), std=torch.tensor(0.01))).to(device)
+            light_intensity = nn.parameter.Parameter(torch.tensor([[[[[[0.5],
+            [0.5],
+            [0.5],
+            [0.5],
+            [1.2],
+            [1.2],
+            [1.2],
+            [1.2],
+            [2.2],
+            [2.2],
+            [2.2],
+            [2.2]]]]]])).to(device)
 
-        self.lights = nn.Parameter(lights)
-        self.camera = nn.parameter.Parameter(camera)
+        self.mesh = nn.parameter.Parameter(mesh.to(device))
+        self.lights = nn.parameter.Parameter(lights.to(device)) #nn.Parameter(lights)
+        self.camera = nn.parameter.Parameter(camera.to(device))#nn.parameter.Parameter(camera)
 
         #self.rough = nn.parameter.Parameter(torch.normal(mean=torch.tensor(0.5), std=torch.tensor(0.1)))
-        self.rough = nn.parameter.Parameter(rough)
+        self.rough = nn.parameter.Parameter(rough).to(device)
         #self.diffuse = nn.parameter.Parameter(torch.normal(mean=torch.tensor(0.5), std=torch.tensor(0.1)))
-        self.diffuse = nn.parameter.Parameter(diffuse)
+        self.diffuse = nn.parameter.Parameter(diffuse).to(device)
         #self.f0P = nn.parameter.Parameter(torch.normal(mean=torch.tensor(0.5), std=torch.tensor(0.1)))
-        self.f0P = nn.parameter.Parameter(f0P)
+        self.f0P = nn.parameter.Parameter(f0P).to(device)
 
-        self.light_intensity = nn.parameter.Parameter(light_intensity)
-        self.light_color = torch.ones_like(self.light_intensity)
-        self.x = nn.parameter.Parameter(torch.tensor(1.29))
-        self.y = nn.parameter.Parameter(torch.tensor(0.97))
-        self.la = get_light_attenuation()
+        self.light_intensity = nn.parameter.Parameter(light_intensity).to(device)
+        self.light_color = torch.ones_like(self.light_intensity).to(device)
+        self.x = torch.tensor(1.6083).to(device) #nn.parameter.Parameter(torch.tensor(1.29))
+        self.y = torch.tensor(1.20288).to(device) #nn.parameter.Parameter(torch.tensor(0.97))
+        self.la = get_light_attenuation().to(device)
+
+
     def forward(self):
+        rough = torch.sigmoid(self.rough)
+        diffuse = torch.sigmoid(self.diffuse)
+        f0P = torch.sigmoid(self.f0P)
+
         color = filament_renderer(self.mesh, self.camera, self.lights, la=self.la,
-                                 rough=self.rough, diffuse=self.diffuse, light_intensity=self.light_intensity, light_color=self.light_color, f0P=self.f0P, x=self.x, y=self.y)
+                                 rough=rough, diffuse=diffuse, light_intensity=self.light_intensity, light_color=self.light_color, f0P=f0P, x=self.x, y=self.y)
         return color.squeeze(0).squeeze(0).squeeze(-1)
 
 

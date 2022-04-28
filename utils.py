@@ -99,8 +99,8 @@ def getVectors(surface, targetLocation, x, y, norm=True):
     dx = x/w
     dy = y/h
 
-    X = torch.linspace(-(w // 2), (w // 2), steps=w).unsqueeze(0) * dx
-    Y = torch.linspace(-(h // 2), (h // 2), steps=h).unsqueeze(1) * dy
+    X = torch.linspace(-(w // 2), (w // 2), steps=w).unsqueeze(0).to(device) * dx
+    Y = torch.linspace(-(h // 2), (h // 2), steps=h).unsqueeze(1).to(device) * dy
 
     X = X.repeat(h, 1).unsqueeze(0).repeat(b, 1, 1).unsqueeze(-1).to(device)
     Y = Y.repeat(1, w).unsqueeze(0).repeat(b, 1, 1).unsqueeze(-1).to(device)
@@ -149,3 +149,74 @@ def get_light_attenuation():
             light_attenuation = torch.cat((light_attenuation, images[im_nr].unsqueeze(-1)), dim=-1)
 
     return light_attenuation.unsqueeze(0).unsqueeze(0).unsqueeze(-1) # S,C,H,W,L,1
+
+def create_next_folder(path):
+    folder = 0
+    while True:
+        if not os.path.exists(os.path.join(path)):
+            os.mkdir(os.path.join(path))
+        if not os.path.exists(os.path.join(path, f'{folder}')):
+            os.mkdir(os.path.join(path, f'{folder}'))
+            path = os.path.join(path, f'{folder}')
+            break
+        else:
+            folder += 1
+    return path
+
+def get_real_samples(path):
+    '''file_path = os.path.join(path, '**', f'*.jpg')
+    paths = glob.glob(file_path, recursive=True)
+    numbers = [x[-6:-4] for x in paths]'''
+
+    folders = glob.glob(os.path.join(path, '*'), recursive=True)
+
+    real_samples = None
+    for folder in folders:
+        file_path = os.path.join(folder, f'*.jpg')
+        paths = glob.glob(file_path, recursive=True)
+        numbers = [x[-6:-4] for x in paths]
+        images = [None] * len(numbers)
+        for idx, number in enumerate(numbers):
+            if number[0] == '/':
+                number = number[1]
+            images[int(number)] = paths[idx]
+
+        convert_tensor = transforms.ToTensor()
+
+        samples = None
+        for image in images:
+            try:
+                imageGrayscale = imageio.imread(image)
+            except:
+                pass
+            im = convert_tensor(Image.fromarray(imageGrayscale))[0].unsqueeze(-1)
+            if samples == None:
+                samples = im
+            else:
+                samples = torch.cat((samples, im), dim=-1)
+        if real_samples == None:
+            real_samples = samples.unsqueeze(0)
+        else:
+            real_samples = torch.cat((real_samples, samples.unsqueeze(0)), dim=0)
+    return real_samples.unsqueeze(1)
+
+def get_scene_locations(batch_real_samples):
+    resolution = (batch_real_samples, 386, 516)
+
+    cameraDistance = 8.
+    camera = torch.tensor([[[[[0, 0, cameraDistance]]]]])
+
+    h1, h2, h3 = 0.79, 3.29, 5.79
+    r1, r2, r3 = 2.975, 2.660705446, 1.937933168
+
+    locationLights = [[0.0, -r3, h3], [r3, 0.0, h3],
+                      [0.0, r3, h3], [-r3, 0.0, h3],
+                      [0.0, -r2, h2], [r2, 0.0, h2],
+                      [0.0, r2, h2], [-r2, 0.0, h2],
+                      [0.0, -r1, h1], [r1, 0.0, h1],
+                      [0.0, r1, h1], [-r1, 0.0, h1]]
+    lights = torch.tensor(locationLights)
+
+    surface = torch.zeros(resolution)
+
+    return camera, lights, surface
