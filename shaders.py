@@ -30,13 +30,13 @@ class PhongShading():
 
 class FilamentShading():
     def __init__(self,
-                    camera, lights, light_intensity,
-                    rough,
-                    diffuse,
-                    f0P ,
-                    x=1.2028881311416626,
-                    y=1.6083250045776367,
-                    device='cpu'):
+                 camera, lights, light_intensity,
+                 rough,
+                 diffuse,
+                 f0P ,
+                 x=1.6083250045776367,
+                 y=1.2028881311416626,
+                 device='cpu'):
         self.rough = rough
         self.diffuse = diffuse
         self. f0P = f0P
@@ -51,7 +51,6 @@ class FilamentShading():
         self.light_color = torch.ones_like(self.light_intensity)
 
         self.la = get_light_attenuation().to(device)
-
     def forward(self, surface):
         color = filament_renderer(surface, camera=self.camera, lights=self.lights,la=self.la, light_intensity=self.light_intensity, light_color=self.light_color, rough=self.rough, diffuse=self.diffuse, f0P=self.f0P, x=self.x, y=self.y).permute(0, 4, 2, 3, 1, 5)[None].squeeze(0).squeeze(-1).squeeze(-1)
         return color

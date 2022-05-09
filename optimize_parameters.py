@@ -19,7 +19,7 @@ def optimizeParameters(path_target='realSamples', path_results='results', lr = 1
         device = 'cuda'
     else:
         device = 'cpu'
-    model = OptimizeParameters(mesh, lights, camera, path=None, device=device)
+    model = OptimizeParameters((mesh,True), (lights,False), (camera,False), device=device)
 
     parameters = []
     for name, param in model.named_parameters():
@@ -46,7 +46,7 @@ def optimizeParameters(path_target='realSamples', path_results='results', lr = 1
             if epoch % 100 == 0:
                 os.mkdir(os.path.join(path, f'Epoch-{epoch}'))
                 path2 = os.path.join(path, f'Epoch-{epoch}')
-                print(f'Rough {torch.sigmoid(model.rough).item()} Diffuse {torch.sigmoid(model.diffuse).item()} f0P {torch.sigmoid(model.f0P).item()}')
+                print(f'Rough {model.rough.item()} Diffuse {torch.sigmoid(model.diffuse).item()} f0P {model.f0P.item()}')
                 num_L = samples.shape[4]
                 for L in range(num_L):
                     plt.figure(figsize=(20, 10))
@@ -113,4 +113,6 @@ def optimizeParameters(path_target='realSamples', path_results='results', lr = 1
             'f0P' : model.f0P.detach().cpu(),
             'camera' : model.camera.detach().cpu(),
             'lights' : model.lights.detach().cpu(),
-            'light_intensity': model.light_intensity.detach().cpu()}
+            'light_intensity': model.light_intensity.detach().cpu(),
+            'x': model.x.detach().cpu(),
+            'y': model.x.detach().cpu()}

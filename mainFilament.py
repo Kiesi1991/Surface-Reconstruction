@@ -15,7 +15,7 @@ import cv2
 from models import *
 
 
-def train_NN(camera, lights, light_intensity, rough, diffuse, f0P):
+def train_NN(camera, lights, light_intensity, rough, diffuse, f0P,x,y):
     resolution = (386, 516)
 
     # training parameters
@@ -23,7 +23,7 @@ def train_NN(camera, lights, light_intensity, rough, diffuse, f0P):
     lr = 1e-4
     crop = 50
 
-    file_path = os.path.join('realSamples', '**', f'*.jpg')
+    file_path = os.path.join('realSamples', 'part5', f'*.jpg')
     paths = glob.glob(file_path, recursive=True)
     numbers = [x[-6:-4] for x in paths]
 
@@ -54,9 +54,10 @@ def train_NN(camera, lights, light_intensity, rough, diffuse, f0P):
     else:
         device = 'cpu'
 
-    shader = FilamentShading(camera, lights, light_intensity, rough=rough, diffuse=diffuse, f0P=f0P, device=device)
+    shader = FilamentShading(camera, lights, light_intensity, rough=rough, diffuse=diffuse, f0P=f0P, device=device,x=x,y=y)
 
     dataset = DummySet(resolution)
+    ground_truth = torch.tensor(createSurface(resolution).tolist())
 
     n_samples = len(dataset)
     # Shuffle integers from 0 n_samples to get shuffled sample indices
@@ -71,8 +72,8 @@ def train_NN(camera, lights, light_intensity, rough, diffuse, f0P):
     testloader = DataLoader(testset, batch_size=1, shuffle=False)
     trainloader = DataLoader(trainingset, batch_size=4, shuffle=True)
 
-    path = os.path.join('results', '20', 'Epoch-10000')
-    optimized_surface = torch.load(os.path.join(path, 'surface.pt'))
+    #path = os.path.join('results', '20', 'Epoch-10000')
+    #optimized_surface = torch.load(os.path.join(path, 'surface.pt'))
 
     ############################################################################
     # Update and evaluate network
@@ -107,12 +108,30 @@ def train_NN(camera, lights, light_intensity, rough, diffuse, f0P):
         network.train()
 
         errs = []
+        comp_max = None
         for idx, err in enumerate(_forward(network, data, loss)):
             errs.append(err.item())
 
             opt.zero_grad()
             (err).backward()
             opt.step()
+
+            if (idx % 2) == 0 and idx != 0:
+                if not os.path.exists(os.path.join(path, 'video')):
+                    os.mkdir(os.path.join(path, 'video'))
+
+                im_gt = shader.forward(ground_truth.unsqueeze(0).to(device))
+                pred_gt = model(im_gt).cpu().detach().numpy()[0,200,crop:-crop]
+
+                x = np.linspace(0, len(pred_gt) - 1, len(pred_gt))
+                plt.plot(x, ground_truth.cpu().detach().numpy()[200,crop:-crop], label='ground truth')
+                plt.plot(x, pred_gt, label='prediction')
+                plt.xlabel('x')
+                plt.ylabel('height')
+                plt.legend()
+                plt.savefig(os.path.join(path, 'video', f'{epoch}-{idx}.png'))
+                plt.close()
+
         return errs
 
     ############################################################################
@@ -154,8 +173,8 @@ def train_NN(camera, lights, light_intensity, rough, diffuse, f0P):
         vals.append(mean(val_errs))
         trains.append(mean(errs))
 
-        true_mse_surface = torch.log(mse(optimized_surface, pred.cpu().detach())+1).item()
-        diff_surface.append(true_mse_surface)
+        comp_max = None
+
         for L in range(12):
             plt.figure(figsize=(20, 10))
             plt.subplot(1, 2, 1)
@@ -176,6 +195,8 @@ def train_NN(camera, lights, light_intensity, rough, diffuse, f0P):
             plt.savefig(os.path.join(path, f'{epoch}', f'Fake-{L}.png'))
             plt.close()
 
+
+
             p = cv2.cvtColor(pred[L, crop:-crop, crop:-crop].cpu().detach().numpy(), cv2.COLOR_GRAY2RGB)
             t = cv2.cvtColor(samples[L, crop:-crop, crop:-crop].cpu().detach().numpy(), cv2.COLOR_GRAY2RGB)
 
@@ -191,31 +212,68 @@ def train_NN(camera, lights, light_intensity, rough, diffuse, f0P):
             plt.savefig(os.path.join(path, f'{epoch}', f'TrueRGB-{L}.png'))
             plt.close()
 
-            x = np.linspace(0, len(diff_surface) - 1, len(diff_surface))
-            plt.plot(x, diff_surface, label='difference')
-            plt.xlabel('epoch')
-            plt.ylabel('Error')
-            plt.legend()
-            plt.savefig(os.path.join(path, f'difference-surface.png'))
-            plt.close()
+        im_gt = shader.forward(ground_truth.unsqueeze(0).to(device))
+        pred_gt = model(im_gt)
+        #comparism = pred_gt - ground_truth.unsqueeze(0).to(device)
 
-            x = np.linspace(0, len(diff) - 1, len(diff))
-            plt.plot(x, diff, label='difference')
-            plt.plot(x, vals, label='validation')
-            plt.plot(x, trains, label='training')
-            plt.xlabel('epoch')
-            plt.ylabel('Error')
-            plt.legend()
-            plt.savefig(os.path.join(path, f'training-errors.png'))
-            plt.close()
+        true_mse_surface = torch.log(mse(pred_gt, ground_truth.unsqueeze(0).to(device)) + 1).item()
+        diff_surface.append(true_mse_surface)
 
-            torch.save(model.state_dict(), os.path.join(path, f'{epoch}', 'model.pt'))
+        x = np.linspace(0, len(diff_surface) - 1, len(diff_surface))
+        plt.plot(x, diff_surface, label='difference')
+        plt.xlabel('epoch')
+        plt.ylabel('Error')
+        plt.legend()
+        plt.savefig(os.path.join(path, f'difference-surface.png'))
+        plt.close()
 
-            # loading model
-            '''
-            model = TheModelClass(*args, **kwargs)
-            model.load_state_dict(torch.load(PATH))
-            model.eval()
-            '''
+        x = np.linspace(0, len(diff) - 1, len(diff))
+        plt.plot(x, diff, label='difference')
+        plt.plot(x, vals, label='validation')
+        plt.plot(x, trains, label='training')
+        plt.xlabel('epoch')
+        plt.ylabel('Error')
+        plt.legend()
+        plt.savefig(os.path.join(path, f'training-errors.png'))
+        plt.close()
+
+        torch.save(model.state_dict(), os.path.join(path, f'{epoch}', 'model.pt'))
+
+
+        '''plt.figure(figsize=(30, 10))
+        plt.subplot(1, 3, 1)
+        plt.imshow(comparism.squeeze(0)[crop:-crop, crop:-crop].cpu().detach().numpy())
+        plt.title('camparism')
+        plt.colorbar()
+        #plt.clim(0, ground_truth.max())
+        if comp_max == None:
+            if abs(comparism.squeeze(0)[crop:-crop, crop:-crop].max()) > abs(comparism.squeeze(0)[crop:-crop, crop:-crop].min()):
+                comp_max = comparism.squeeze(0)[crop:-crop, crop:-crop].max()
+            else:
+                comp_max = comparism.squeeze(0)[crop:-crop, crop:-crop].min()
+        plt.clim(-abs(comp_max), abs(comp_max))
+
+        plt.subplot(1, 3, 2)
+        plt.imshow(ground_truth[crop:-crop, crop:-crop].cpu().detach().numpy())
+        plt.title('ground truth')
+        plt.colorbar()
+        # plt.clim(0, 1.0)
+
+        plt.subplot(1, 3, 3)
+        plt.imshow(pred_gt.squeeze(0)[crop:-crop, crop:-crop].cpu().detach().numpy())
+        plt.title('prediction')
+        plt.colorbar()
+        # plt.clim(0, 1.0)
+
+        plt.savefig(os.path.join(path, f'{epoch}', f'compare.png'))
+
+        plt.close()
+'''
+        # loading model
+        '''
+        model = TheModelClass(*args, **kwargs)
+        model.load_state_dict(torch.load(PATH))
+        model.eval()
+        '''
 
         print(f'Epoch {epoch} AVG Mean {mean(errs):.6f} AVG Val Mean {mean(val_errs):.6f} MSE Surface {mse_surface}')
