@@ -15,7 +15,7 @@ import cv2
 from models import *
 
 
-def train_NN(camera, lights, light_intensity, rough, diffuse, f0P,x,y):
+def train_NN(camera, lights, light_intensity, intensity, rough, diffuse, f0P,x,y):
     resolution = (386, 516)
 
     # training parameters
@@ -54,7 +54,7 @@ def train_NN(camera, lights, light_intensity, rough, diffuse, f0P,x,y):
     else:
         device = 'cpu'
 
-    shader = FilamentShading(camera, lights, light_intensity, rough=rough, diffuse=diffuse, f0P=f0P, device=device,x=x,y=y)
+    shader = FilamentShading(camera, lights, light_intensity, intensity, rough=rough, diffuse=diffuse, f0P=f0P, device=device,x=x,y=y)
 
     dataset = DummySet(resolution)
     ground_truth = torch.tensor(createSurface(resolution).tolist())
@@ -141,18 +141,7 @@ def train_NN(camera, lights, light_intensity, rough, diffuse, f0P,x,y):
     mse = torch.nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=0.0)
 
-    path = os.path.join('results')
-
-    folder = 0
-    while True:
-        if not os.path.exists(os.path.join(path)):
-            os.mkdir(os.path.join(path))
-        if not os.path.exists(os.path.join(path, f'{folder}')):
-            os.mkdir(os.path.join(path, f'{folder}'))
-            path = os.path.join(path, f'{folder}')
-            break
-        else:
-            folder += 1
+    path = create_next_folder(os.path.join('results', 'trainNN'))
 
     diff = []
     diff_surface = []

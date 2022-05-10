@@ -221,3 +221,22 @@ def get_scene_locations(batch_real_samples):
     surface = torch.zeros(resolution)
 
     return camera, lights, surface
+
+def get_scene_parameters(path):
+    surface = torch.load(os.path.join(path, 'surface.pt'))
+    lights = torch.load(os.path.join(path, 'lights.pt'))
+    camera = torch.load(os.path.join(path, 'camera.pt'))
+
+    rough = torch.load(os.path.join(path, 'rough.pt'))
+    diffuse = torch.load(os.path.join(path, 'diffuse.pt'))
+    f0P = torch.load(os.path.join(path, 'f0P.pt'))
+    light_intensity = torch.load(os.path.join(path, 'light_intensity.pt'))
+    intensity = torch.load(os.path.join(path, 'intensity.pt'))
+
+    x = torch.load(os.path.join(path, 'x.pt'))
+    y = torch.load(os.path.join(path, 'y.pt'))
+
+    return {'surface':surface, 'lights':lights, 'camera':camera,
+            'rough':rough, 'diffuse':diffuse, 'f0P':f0P,
+            'light_intensity':light_intensity, 'intensity':intensity,
+            'x':x, 'y':y}

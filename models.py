@@ -4,7 +4,7 @@ import torch
 import torchvision
 import torch.nn.functional as F
 from filament_renderer import filament_renderer
-from utils import get_light_attenuation
+from utils import get_light_attenuation, get_scene_parameters
 import os
 
 ###############################################
@@ -91,6 +91,24 @@ class OptimizeParameters(nn.Module):
                  device='cpu'):
         super().__init__()
 
+        get_para = True
+        if get_para:
+            parameters = get_scene_parameters(os.path.join('results', 'optimization', '1', 'Epoch-10000'))
+            surface = (parameters['surface'], True)
+            lights = (parameters['lights'], False)
+            camera = (parameters['camera'], False)
+            rough = parameters['rough'].item()
+            diffuse = parameters['diffuse'].item()
+            f0P = parameters['f0P'].item()
+            intensity = parameters['intensity'].item()
+            x = parameters['x'].item()
+            y = parameters['y'].item()
+        else:
+            rough, diffuse, f0P = 0., 0., 0.
+            intensity = 5.2
+            x, y = 1.6083, 1.20288
+
+
         self.mesh = Parameter(surface[0].to(device)) if surface[1] else surface[0].to(device)
         self.lights = Parameter(lights[0].to(device)) if lights[1]  else lights[0].to(device)
         self.camera = Parameter(camera[0].to(device)) if camera[1] else camera[0].to(device)
@@ -109,14 +127,14 @@ class OptimizeParameters(nn.Module):
                                              [1.]]]]]])).to(device)
         self.light_intensity = Parameter(light_intensity) if par_li else light_intensity
         self.light_color = torch.ones_like(self.light_intensity).to(device)
-        self.intensity = nn.parameter.Parameter(torch.tensor(1.5).to(device))
+        self.intensity = nn.parameter.Parameter(torch.tensor(intensity).to(device))
 
-        self.rough = Parameter(torch.tensor(-0.5).to(device)) if par_r else torch.tensor(-0.5).to(device)
-        self.diffuse = Parameter(torch.tensor(2.0).to(device)) if par_d else torch.tensor(2.0).to(device)
-        self.f0P = Parameter(torch.tensor(2.6).to(device)) if par_f0 else torch.tensor(2.6).to(device)
+        self.rough = Parameter(torch.tensor(rough).to(device)) if par_r else torch.tensor(rough).to(device)
+        self.diffuse = Parameter(torch.tensor(diffuse).to(device)) if par_d else torch.tensor(diffuse).to(device)
+        self.f0P = Parameter(torch.tensor(f0P).to(device)) if par_f0 else torch.tensor(f0P).to(device)
 
-        self.x = Parameter(torch.tensor(1.6083).to(device)) if par_x else torch.tensor(1.6083).to(device)
-        self.y = Parameter(torch.tensor(1.20288)) if par_y else torch.tensor(1.20288)
+        self.x = Parameter(torch.tensor(x).to(device)) if par_x else torch.tensor(x).to(device)
+        self.y = Parameter(torch.tensor(y)) if par_y else torch.tensor(y)
 
         self.la = get_light_attenuation().to(device)
 
@@ -170,7 +188,6 @@ class OptimizeParameters(nn.Module):
         self.ratio = nn.parameter.Parameter(torch.tensor(0.6).to(device))
 
         self.device = device'''
-        pass
 
 
     def forward(self):
