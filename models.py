@@ -88,12 +88,11 @@ class OptimizeParameters(nn.Module):
                  par_li=False,
                  par_r=True, par_d=True, par_f0=True,
                  par_x=False, par_y=False,
-                 device='cpu'):
+                 device='cpu', get_para=True):
         super().__init__()
 
-        get_para = True
         if get_para:
-            parameters = get_scene_parameters(os.path.join('results', 'optimization', '1', 'Epoch-10000'))
+            parameters = get_scene_parameters(os.path.join('results', 'optimization', '2', 'Epoch-10000'))
             surface = (parameters['surface'], True)
             lights = (parameters['lights'], False)
             camera = (parameters['camera'], False)

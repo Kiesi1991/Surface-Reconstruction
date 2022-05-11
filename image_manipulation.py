@@ -13,7 +13,7 @@ parameters = get_scene_parameters(path)
 
 model = OptimizeParameters((parameters['surface'][0].unsqueeze(0), False), (parameters['lights'], False), (parameters['camera'], False), par_li=False,
                  par_r=False, par_d=False, par_f0=False,
-                 par_x=False, par_y=False)
+                 par_x=False, par_y=False, get_para=False)
 model.eval()
 im = model.forward()
 

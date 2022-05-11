@@ -11,7 +11,7 @@ if load_parameters:
     parameters = get_scene_parameters(path)
 else:
     print('1) optimize scene parameters for training')
-    parameters = optimizeParameters(epochs=10001)
+    parameters = optimizeParameters(epochs=100001)
 print('---'*35)
 print('2) train NN with fake images')
 train_NN(camera=parameters['camera'],
