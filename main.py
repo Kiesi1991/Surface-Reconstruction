@@ -11,9 +11,12 @@ if load_parameters:
     parameters = get_scene_parameters(path)
 else:
     print('1) optimize scene parameters for training')
-    parameters = optimizeParameters(epochs=100001)
+    parameters = optimizeParameters(epochs=20001, intensity=2.5,
+                                    rough=(0.1,0.1), diffuse=(0.1,0.1), f0P=(0.9,0.9),
+                                    par_r=False, par_d=False, par_f0=False,
+                                    synthetic=True)
 print('---'*35)
-print('2) train NN with fake images')
+'''print('2) train NN with fake images')
 train_NN(camera=parameters['camera'],
          lights=parameters['lights'],
          light_intensity=parameters['light_intensity'],
@@ -22,4 +25,4 @@ train_NN(camera=parameters['camera'],
          diffuse=parameters['diffuse'],
          f0P=parameters['f0P'],
          x=parameters['x'],
-         y=parameters['y'])
+         y=parameters['y'])'''

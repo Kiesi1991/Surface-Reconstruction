@@ -36,12 +36,12 @@ class FilamentShading():
                  rough,
                  diffuse,
                  f0P ,
-                 x=1.6083250045776367,
-                 y=1.2028881311416626,
+                 x=1.6083,
+                 y=1.20288,
                  device='cpu'):
-        self.rough = torch.sigmoid(rough).to(device)
-        self.diffuse = torch.sigmoid(diffuse).to(device)
-        self. f0P = torch.sigmoid(f0P).to(device)
+        self.rough = torch.clamp(rough, min=0., max=1.).to(device)
+        self.diffuse = torch.clamp(diffuse, min=0., max=1.).to(device)
+        self. f0P = torch.clamp(f0P, min=0., max=1.).to(device)
         #self. camera = camera.to(device)
         self.camera = camera.to(device)
         #self.lights = lights.to(device)

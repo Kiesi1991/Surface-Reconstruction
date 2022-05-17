@@ -88,7 +88,9 @@ class OptimizeParameters(nn.Module):
                  par_li=False,
                  par_r=True, par_d=True, par_f0=True,
                  par_x=False, par_y=False,
-                 device='cpu', get_para=True):
+                 device='cpu', get_para=True,
+                 intensity=1.,
+                 rough=0.5, diffuse=0.5, f0P=0.5):
         super().__init__()
 
         if get_para:
@@ -103,8 +105,7 @@ class OptimizeParameters(nn.Module):
             x = parameters['x'].item()
             y = parameters['y'].item()
         else:
-            rough, diffuse, f0P = 0., 0., 0.
-            intensity = 5.2
+            #rough, diffuse, f0P = 0.1, 0.1, 0.9
             x, y = 1.6083, 1.20288
 
 
@@ -126,7 +127,7 @@ class OptimizeParameters(nn.Module):
                                              [1.]]]]]])).to(device)
         self.light_intensity = Parameter(light_intensity) if par_li else light_intensity
         self.light_color = torch.ones_like(self.light_intensity).to(device)
-        self.intensity = nn.parameter.Parameter(torch.tensor(intensity).to(device))
+        self.intensity = torch.tensor(intensity).to(device) #nn.parameter.Parameter(torch.tensor(intensity).to(device))
 
         self.rough = Parameter(torch.tensor(rough).to(device)) if par_r else torch.tensor(rough).to(device)
         self.diffuse = Parameter(torch.tensor(diffuse).to(device)) if par_d else torch.tensor(diffuse).to(device)
@@ -190,15 +191,17 @@ class OptimizeParameters(nn.Module):
 
 
     def forward(self):
-        rough = torch.sigmoid(self.rough)
-        diffuse = torch.sigmoid(self.diffuse)
-        f0P = torch.sigmoid(self.f0P)
+        rough = torch.clamp(self.rough, min=0., max=1.) #torch.sigmoid(self.rough)
+        diffuse = torch.clamp(self.diffuse, min=0., max=1.) #torch.sigmoid(self.diffuse)
+        f0P = torch.clamp(self.f0P, min=0., max=1.) #torch.sigmoid(self.f0P)
 
         light_intensity = self.light_intensity * self.intensity
 
-        color = filament_renderer(self.mesh, self.camera, self.lights, la=self.la,
+        mesh = self.mesh - torch.mean(self.mesh)
+
+        color = filament_renderer(mesh, self.camera, self.lights, la=self.la,
                                  rough=rough, diffuse=diffuse, light_intensity=light_intensity, light_color=self.light_color, f0P=f0P, x=self.x, y=self.y)
-        return color.squeeze(0).squeeze(0).squeeze(-1)
+        return color.squeeze(-1)
 
 
 

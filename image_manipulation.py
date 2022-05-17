@@ -8,7 +8,7 @@ import torch
 import os
 from utils import get_scene_parameters
 
-path = os.path.join('results', 'optimization', '0', 'Epoch-3000')
+path = os.path.join('results', 'optimization', '0', 'Epoch-3500')
 parameters = get_scene_parameters(path)
 
 model = OptimizeParameters((parameters['surface'][0].unsqueeze(0), False), (parameters['lights'], False), (parameters['camera'], False), par_li=False,

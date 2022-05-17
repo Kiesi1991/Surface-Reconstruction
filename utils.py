@@ -6,6 +6,7 @@ import glob
 import imageio
 from PIL import Image
 from torchvision import transforms
+from datetime import datetime
 
 def createSurface(resolution):
     surface = np.zeros(resolution)
@@ -36,7 +37,7 @@ def createSurface(resolution):
     o_var = np.random.normal(0, h*0.1, 1)[0]
     surface -= ((surface.max() / 2.0)+o_var)
 
-    return torch.from_numpy(surface)
+    return torch.from_numpy(surface) - torch.mean(torch.from_numpy(surface))
 
     '''for sigma, p in para:
         surface1 = np.random.choice(np.array([1.0, 0.0]), size=resolution, p=[p, 1.0-p])
@@ -240,3 +241,16 @@ def get_scene_parameters(path):
             'rough':rough, 'diffuse':diffuse, 'f0P':f0P,
             'light_intensity':light_intensity, 'intensity':intensity,
             'x':x, 'y':y}
+
+class TimeDelta():
+    def __init__(self):
+        super().__init__()
+        self.time = None
+    def event(self):
+        eventtime = datetime.now()
+        if self.time != None:
+            timedelta = eventtime - self.time
+        else:
+            timedelta = 0
+        self.time = eventtime
+        return timedelta
