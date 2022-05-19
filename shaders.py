@@ -35,13 +35,13 @@ class FilamentShading():
                  camera, lights, light_intensity, intensity,
                  rough,
                  diffuse,
-                 f0P ,
+                 reflectance ,
                  x=1.6083,
                  y=1.20288,
                  device='cpu'):
         self.rough = torch.clamp(rough, min=0., max=1.).to(device)
         self.diffuse = torch.clamp(diffuse, min=0., max=1.).to(device)
-        self. f0P = torch.clamp(f0P, min=0., max=1.).to(device)
+        self.reflectance = torch.clamp(reflectance, min=0., max=1.).to(device)
         #self. camera = camera.to(device)
         self.camera = camera.to(device)
         #self.lights = lights.to(device)
@@ -54,6 +54,6 @@ class FilamentShading():
 
         self.la = get_light_attenuation().to(device)
     def forward(self, surface):
-        color = filament_renderer(surface, camera=self.camera, lights=self.lights,la=self.la, light_intensity=self.light_intensity, light_color=self.light_color, rough=self.rough, diffuse=self.diffuse, f0P=self.f0P, x=self.x, y=self.y).permute(0, 4, 2, 3, 1, 5)[None].squeeze(0).squeeze(-1).squeeze(-1)
+        color = filament_renderer(surface, camera=self.camera, lights=self.lights,la=self.la, light_intensity=self.light_intensity, light_color=self.light_color, rough=self.rough, diffuse=self.diffuse, reflectance=self.reflectance, x=self.x, y=self.y).permute(0, 4, 2, 3, 1, 5)[None].squeeze(0).squeeze(-1).squeeze(-1)
         return color
 

@@ -16,8 +16,13 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
                        lr=1e-3, weight_decay=0.,
                        epochs=3001,
                        intensity=2.5,
-                       rough=(0.5,0.5,True), diffuse=(0.5,0.5,True), f0P=(0.5,0.5,True),
+                       rough=(0.5,0.5,True), diffuse=(0.5,0.5,True), reflectance=(0.5,0.5,True),
                        synthetic=False, surface_opimization=True):
+
+    if torch.cuda.is_available():
+        device = 'cuda'
+    else:
+        device = 'cpu'
 
     if not os.path.exists(os.path.join(path_results)):
         os.mkdir(os.path.join(path_results))
@@ -30,19 +35,14 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
     if synthetic:
         light_intensity = torch.ones((1,1,1,1,12,1))
         shader = FilamentShading(camera, lights, light_intensity, intensity=torch.tensor(intensity),
-                                 rough=torch.tensor(rough[0]), diffuse=torch.tensor(diffuse[0]), f0P=torch.tensor(f0P[0]))
-        surface = torch.tensor(createSurface((386, 516)).tolist()).unsqueeze(0)
+                                 rough=torch.tensor(rough[0]), diffuse=torch.tensor(diffuse[0]), reflectance=torch.tensor(reflectance[0]), device=device)
+        surface = torch.tensor(createSurface((386, 516)).tolist()).unsqueeze(0).to(device)
         samples = shader.forward(surface).permute((0,2,3,1)).unsqueeze(0)
 
-
-    if torch.cuda.is_available():
-        device = 'cuda'
-    else:
-        device = 'cpu'
     model = OptimizeParameters((mesh,True) if surface_opimization else (surface,False),
                                (lights,False), (camera,False), device=device,
-                               rough=rough[1], diffuse=diffuse[1], f0P=f0P[1],
-                               par_r=rough[2], par_d=diffuse[2], par_f0=f0P[2],
+                               rough=rough[1], diffuse=diffuse[1], reflectance=reflectance[1],
+                               par_r=rough[2], par_d=diffuse[2], par_ref=reflectance[2],
                                get_para=False, intensity=intensity)
 
     parameters = []
@@ -57,13 +57,13 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
     errors = []
     roughs = []
     diffuses = []
-    f0s = []
+    reflectances = []
     intensities = []
     #TimeEpoch = TimeDelta()
     #TimePlots = TimeDelta()
     for epoch in tqdm(range(epochs)):
             pred = model.forward()
-            err = mse(pred.to(device), samples.to(device)) #+ 0.001 * (model.rough - model.f0P) #+ 0.001 * (model.mesh**2).sum()
+            err = mse(pred.to(device), samples.to(device)) #+ 0.001 * (model.rough - model.reflectance) #+ 0.001 * (model.mesh**2).sum()
             errs.append(err.item())
             optimizer.zero_grad()
             err.backward()
@@ -81,7 +81,7 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
                 #_ = TimePlots.event()
                 os.mkdir(os.path.join(path, f'Epoch-{epoch}'))
                 path2 = os.path.join(path, f'Epoch-{epoch}')
-                #print(f'Rough {model.rough.item()} Diffuse {torch.sigmoid(model.diffuse).item()} f0P {model.f0P.item()}')
+                #print(f'Rough {model.rough.item()} Diffuse {torch.sigmoid(model.diffuse).item()} reflectance {model.reflectance.item()}')
                 num_L = samples.shape[4]
                 for L in range(num_L):
                     plt.figure(figsize=(20, 10))
@@ -123,23 +123,23 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
 
                 roughs.append(model.rough.cpu().detach().numpy().item())
                 diffuses.append(model.diffuse.cpu().detach().numpy().item())
-                f0s.append(model.f0P.cpu().detach().numpy().item())
+                reflectances.append(model.reflectance.cpu().detach().numpy().item())
                 intensities.append(model.intensity.cpu().detach().numpy().item())
 
                 x = np.linspace(0, len(roughs) - 1, len(roughs))
                 plt.plot(x, roughs, label='rough', color='red')
                 plt.plot(x, diffuses, label='diffuse', color='green')
-                plt.plot(x, f0s, label='f0', color='blue')
+                plt.plot(x, reflectances, label='reflectance', color='blue')
                 #plt.plot(x, intensities, label='intensity')
                 plt.xlabel('epoch')
                 plt.ylabel('value')
                 if synthetic:
                     plt.plot(x,[rough[0]]*len(roughs), color='red', linestyle='dashed')
                     plt.plot(x, [diffuse[0]] * len(diffuses), color='green', linestyle='dashed')
-                    plt.plot(x, [f0P[0]] * len(f0s), color='blue', linestyle='dashed')
+                    plt.plot(x, [reflectance[0]] * len(reflectances), color='blue', linestyle='dashed')
                     plt.title(f'parameters with constant intensity {model.intensity.cpu().detach().numpy().item()}\n'
-                              f'Synthetic: (rough,diffuse,f0)={(rough[0], diffuse[0], f0P[0])}; \n'
-                              f'Initial value vor prediction: (rough,diffuse,f0)={(rough[1], diffuse[1], f0P[1])}')
+                              f'Synthetic: (rough,diffuse,reflectance)={(rough[0], diffuse[0], reflectance[0])}; \n'
+                              f'Initial value vor prediction: (rough,diffuse,reflectance)={(rough[1], diffuse[1], reflectance[1])}')
                 else:
                     plt.title(f'parameters with constant intensity {model.intensity.cpu().detach().numpy().item()}')
                 plt.legend()
@@ -161,7 +161,7 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
 
                 with open(os.path.join(path2, 'parameters.txt'), 'w') as f:
                     f.write(f'Parameters {parameters}\n'
-                            f'Rough {model.rough.item()} Diffuse {model.diffuse.item()} f0P {model.f0P.item()} \n'
+                            f'Rough {model.rough.item()} Diffuse {model.diffuse.item()} Reflectance {model.reflectance.item()} \n'
                             f'Camera {model.camera.detach()}\n'
                             f'Lights {model.lights.detach()}\n'
                             f'Surface Max {model.mesh.detach().max()}'
@@ -174,7 +174,7 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
 
                 torch.save(model.rough.detach().cpu(), os.path.join(path2, 'rough.pt'))
                 torch.save(model.diffuse.detach().cpu(), os.path.join(path2, 'diffuse.pt'))
-                torch.save(model.f0P.detach().cpu(), os.path.join(path2, 'f0P.pt'))
+                torch.save(model.reflectance.detach().cpu(), os.path.join(path2, 'reflectance.pt'))
                 torch.save(model.camera.detach().cpu(), os.path.join(path2, 'camera.pt'))
                 torch.save(model.lights.detach().cpu(), os.path.join(path2, 'lights.pt'))
                 torch.save(model.light_intensity.detach(), os.path.join(path2, 'light_intensity.pt'))
@@ -188,7 +188,7 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
 
     return {'rough' : model.rough.detach().cpu(),
             'diffuse' : model.diffuse.detach().cpu(),
-            'f0P' : model.f0P.detach().cpu(),
+            'reflectance' : model.reflectance.detach().cpu(),
             'camera' : model.camera.detach().cpu(),
             'lights' : model.lights.detach().cpu(),
             'light_intensity': model.light_intensity.detach().cpu(),

@@ -230,7 +230,7 @@ def get_scene_parameters(path):
 
     rough = torch.load(os.path.join(path, 'rough.pt'))
     diffuse = torch.load(os.path.join(path, 'diffuse.pt'))
-    f0P = torch.load(os.path.join(path, 'f0P.pt'))
+    reflectance = torch.load(os.path.join(path, 'reflectance.pt'))
     light_intensity = torch.load(os.path.join(path, 'light_intensity.pt'))
     intensity = torch.load(os.path.join(path, 'intensity.pt'))
 
@@ -238,7 +238,7 @@ def get_scene_parameters(path):
     y = torch.load(os.path.join(path, 'y.pt'))
 
     return {'surface':surface, 'lights':lights, 'camera':camera,
-            'rough':rough, 'diffuse':diffuse, 'f0P':f0P,
+            'rough':rough, 'diffuse':diffuse, 'reflectance':reflectance,
             'light_intensity':light_intensity, 'intensity':intensity,
             'x':x, 'y':y}
 

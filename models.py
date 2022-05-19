@@ -86,11 +86,11 @@ class ResBlock(nn.Module):
 class OptimizeParameters(nn.Module):
     def __init__(self, surface, lights, camera,
                  par_li=False,
-                 par_r=True, par_d=True, par_f0=True,
+                 par_r=True, par_d=True, par_ref=True,
                  par_x=False, par_y=False,
                  device='cpu', get_para=True,
                  intensity=1.,
-                 rough=0.5, diffuse=0.5, f0P=0.5):
+                 rough=0.5, diffuse=0.5, reflectance=0.5):
         super().__init__()
 
         if get_para:
@@ -131,7 +131,9 @@ class OptimizeParameters(nn.Module):
 
         self.rough = Parameter(torch.tensor(rough).to(device)) if par_r else torch.tensor(rough).to(device)
         self.diffuse = Parameter(torch.tensor(diffuse).to(device)) if par_d else torch.tensor(diffuse).to(device)
-        self.f0P = Parameter(torch.tensor(f0P).to(device)) if par_f0 else torch.tensor(f0P).to(device)
+        self.reflectance = Parameter(torch.tensor(reflectance).to(device)) if par_ref else torch.tensor(reflectance).to(device)
+
+        #self.f0P = Parameter(torch.tensor(f0P).to(device)) if par_f0 else torch.tensor(f0P).to(device)
 
         self.x = Parameter(torch.tensor(x).to(device)) if par_x else torch.tensor(x).to(device)
         self.y = Parameter(torch.tensor(y)) if par_y else torch.tensor(y)
@@ -193,14 +195,15 @@ class OptimizeParameters(nn.Module):
     def forward(self):
         rough = torch.clamp(self.rough, min=0., max=1.) #torch.sigmoid(self.rough)
         diffuse = torch.clamp(self.diffuse, min=0., max=1.) #torch.sigmoid(self.diffuse)
-        f0P = torch.clamp(self.f0P, min=0., max=1.) #torch.sigmoid(self.f0P)
+
+        #f0P = torch.clamp(self.f0P, min=0., max=1.) #torch.sigmoid(self.f0P)
 
         light_intensity = self.light_intensity * self.intensity
 
         mesh = self.mesh - torch.mean(self.mesh)
 
         color = filament_renderer(mesh, self.camera, self.lights, la=self.la,
-                                 rough=rough, diffuse=diffuse, light_intensity=light_intensity, light_color=self.light_color, f0P=f0P, x=self.x, y=self.y)
+                                 rough=rough, diffuse=diffuse, light_intensity=light_intensity, light_color=self.light_color, reflectance=self.reflectance, x=self.x, y=self.y)
         return color.squeeze(-1)
 
 

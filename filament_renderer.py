@@ -1,18 +1,18 @@
+import torch
+
 from filament import evaluate_point_lights
 import torch.nn.functional as tfunc
 from utils import *
 
 
-def filament_renderer(surface, camera, lights, rough=0.5, diffuse=0.5, f0P=0.5, light_intensity=torch.ones((1, 1, 1, 1, 1, 1)), light_color=torch.ones((1, 1, 1, 1, 1, 1)), x=1.202888, y=1.608325, la=None):
-    surface = surface
+def filament_renderer(surface, camera, lights, rough=torch.tensor(0.5), diffuse=torch.tensor(0.5), reflectance=torch.tensor(0.5), light_intensity=torch.ones((1, 1, 1, 1, 1, 1)), light_color=torch.ones((1, 1, 1, 1, 1, 1)), x=1.6083, y=1.20288, la=None):
     lights = lights.unsqueeze(1).unsqueeze(1).unsqueeze(0)
-    B, H, W = surface.shape
-    L = lights.size()[1]
     light_dir = getVectors(surface, lights, x, y, norm=False).permute(0,2,3,1,4).unsqueeze(1)#B,1,H,W,L,3
     light_dir = tfunc.normalize(light_dir, dim=-1)
 
     roughness = (torch.ones((1, 1, 1, 1, 1, 1)).to(surface.device) * rough).to(surface.device)
     perceptual_roughness = roughness ** 0.5
+    f0 = 0.16 * torch.clamp(reflectance, min=0., max=1.) ** 2
 
     N = getNormals(surface, x=x, y=y)[:, :, :, :, None, :]  # 1,1,H,W,1,3
     V = getVectors(surface, camera, x=x, y=y).permute(0, 2, 3, 1, 4).unsqueeze(1)  # 1,1,H,W,1,3
@@ -29,7 +29,7 @@ def filament_renderer(surface, camera, lights, rough=0.5, diffuse=0.5, f0P=0.5, 
         diffuseColor=(torch.ones((1, 1, 1, 1, 1, 1)).to(surface.device)*diffuse).to(surface.device),        # S?,C?,H?,W?,1,CH #MK: color from surface
         perceptual_roughness=perceptual_roughness,          # S?,C?,H?,W?,1,1 #MK: roughness**2
         roughness=roughness,                                # S?,C?,H?,W?,1,1 #MK: Reflexionsparameter
-        f0=(torch.ones((1, 1, 1, 1, 1, 1)).to(surface.device) * f0P).to(surface.device),            # S?,C?,H?,W?,1,CH? # wird aus der Diffusecolor berechnet (siehe pbr_render function)
+        f0=(torch.ones((1, 1, 1, 1, 1, 1)).to(surface.device) * f0).to(surface.device),            # S?,C?,H?,W?,1,CH? # wird aus der Diffusecolor berechnet (siehe pbr_render function)
         light_dir=light_dir,                                # S,C,H,W,L,3
         NoL=NoL,                                            # S,C,H,W,L,1
         view_dir=V, #.reshape(1,1,H,W,1,3),                    # S,C,H,W,1,3
