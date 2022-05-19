@@ -13,11 +13,14 @@ from tqdm import tqdm
 from shaders import FilamentShading
 
 def optimizeParameters(path_target='realSamples', path_results=os.path.join('results', 'optimization'),
-                       lr=1e-3, epochs=3001,
+                       lr=1e-3, weight_decay=0.,
+                       epochs=3001,
                        intensity=2.5,
-                       rough=(0.1,0.1), diffuse=(0.1,0.1), f0P=(0.9,0.9),
-                       par_r=True, par_d=True, par_f0=True,
-                       synthetic=False):
+                       rough=(0.5,0.5,True), diffuse=(0.5,0.5,True), f0P=(0.5,0.5,True),
+                       synthetic=False, surface_opimization=True):
+
+    if not os.path.exists(os.path.join(path_results)):
+        os.mkdir(os.path.join(path_results))
 
     samples = get_real_samples(path_target)
 
@@ -36,8 +39,10 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
         device = 'cuda'
     else:
         device = 'cpu'
-    model = OptimizeParameters((mesh,True), (lights,False), (camera,False), device=device,
-                               par_r=par_r, par_d=par_d, par_f0=par_f0,
+    model = OptimizeParameters((mesh,True) if surface_opimization else (surface,False),
+                               (lights,False), (camera,False), device=device,
+                               rough=rough[1], diffuse=diffuse[1], f0P=f0P[1],
+                               par_r=rough[2], par_d=diffuse[2], par_f0=f0P[2],
                                get_para=False, intensity=intensity)
 
     parameters = []
@@ -46,7 +51,7 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
             parameters.append(name)
 
     mse = torch.nn.MSELoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=0.0)
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
 
     errs = []
     errors = []
@@ -58,11 +63,11 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
     #TimePlots = TimeDelta()
     for epoch in tqdm(range(epochs)):
             pred = model.forward()
-            err = mse(pred.to(device), samples.to(device)) #+ 0.001 * (model.mesh**2).sum()
+            err = mse(pred.to(device), samples.to(device)) #+ 0.001 * (model.rough - model.f0P) #+ 0.001 * (model.mesh**2).sum()
             errs.append(err.item())
             optimizer.zero_grad()
             err.backward()
-            #torch.nn.utils.clip_grad_value_(model.mesh, 0.001)
+            #torch.nn.utils.clip_grad_value_(model.mesh, 0.0001)
             optimizer.step()
             '''if epoch==epochs//2:
                 optimizer = torch.optim.Adam(model.parameters(), lr=lr/10, weight_decay=0.0)
@@ -72,7 +77,7 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
                 errors.append(statistics.mean(errs[-10:]))
                 #epoch_time = TimeEpoch.event()
                 #print(f'Epoch {epoch} / {epochs} - Time per Epoch {epoch_time/50}')
-            if epoch % 4000 == 0:
+            if epoch % 2000 == 0:
                 #_ = TimePlots.event()
                 os.mkdir(os.path.join(path, f'Epoch-{epoch}'))
                 path2 = os.path.join(path, f'Epoch-{epoch}')
@@ -122,13 +127,21 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
                 intensities.append(model.intensity.cpu().detach().numpy().item())
 
                 x = np.linspace(0, len(roughs) - 1, len(roughs))
-                plt.plot(x, roughs, label='rough')
-                plt.plot(x, diffuses, label='diffuse')
-                plt.plot(x, f0s, label='f0')
+                plt.plot(x, roughs, label='rough', color='red')
+                plt.plot(x, diffuses, label='diffuse', color='green')
+                plt.plot(x, f0s, label='f0', color='blue')
                 #plt.plot(x, intensities, label='intensity')
                 plt.xlabel('epoch')
                 plt.ylabel('value')
-                plt.title(f'parameters with constant intensity {model.intensity.cpu().detach().numpy().item()}')
+                if synthetic:
+                    plt.plot(x,[rough[0]]*len(roughs), color='red', linestyle='dashed')
+                    plt.plot(x, [diffuse[0]] * len(diffuses), color='green', linestyle='dashed')
+                    plt.plot(x, [f0P[0]] * len(f0s), color='blue', linestyle='dashed')
+                    plt.title(f'parameters with constant intensity {model.intensity.cpu().detach().numpy().item()}\n'
+                              f'Synthetic: (rough,diffuse,f0)={(rough[0], diffuse[0], f0P[0])}; \n'
+                              f'Initial value vor prediction: (rough,diffuse,f0)={(rough[1], diffuse[1], f0P[1])}')
+                else:
+                    plt.title(f'parameters with constant intensity {model.intensity.cpu().detach().numpy().item()}')
                 plt.legend()
                 plt.savefig(os.path.join(path, f'parameters.png'))
                 plt.close()
@@ -142,8 +155,6 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
                     plt.plot(x, pred_surface_line, label='prediction')
                     plt.xlabel('x')
                     plt.ylabel('height')
-                    plt.title(f'Synthetic: (rough,diffuse,f0)={(rough[0],diffuse[0],f0P[0])}; \n'
-                              f'Initial value vor prediction: (rough,diffuse,f0)={(rough[1],diffuse[1],f0P[1])}')
                     plt.legend()
                     plt.savefig(os.path.join(path, f'compare-height-{epoch}.png'))
                     plt.close()

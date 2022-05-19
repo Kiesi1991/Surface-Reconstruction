@@ -8,7 +8,7 @@ import torch
 import os
 from utils import get_scene_parameters
 
-path = os.path.join('results', 'optimization', '0', 'Epoch-3500')
+path = os.path.join('results', 'optimization', '16', 'Epoch-8000')
 parameters = get_scene_parameters(path)
 
 model = OptimizeParameters((parameters['surface'][0].unsqueeze(0), False), (parameters['lights'], False), (parameters['camera'], False), par_li=False,
@@ -17,7 +17,7 @@ model = OptimizeParameters((parameters['surface'][0].unsqueeze(0), False), (para
 model.eval()
 im = model.forward()
 
-im2 = cv2.cvtColor(im[:,:,0].cpu().detach().numpy(), cv2.COLOR_GRAY2RGB)
+im2 = cv2.cvtColor(im[0,0,...,0].cpu().detach().numpy(), cv2.COLOR_GRAY2RGB)
 
 matplotlib.use('TkAgg')
 
@@ -49,14 +49,14 @@ def update(val):
     model.diffuse = torch.nn.Parameter(torch.tensor(diffuse))
     model.intensity = torch.nn.Parameter(torch.tensor(intensity))
     im = model.forward()
-    im2 = cv2.cvtColor(im[:, :, int(radio.value_selected)].cpu().detach().numpy(), cv2.COLOR_GRAY2RGB)
+    im2 = cv2.cvtColor(im[0, 0, ..., int(radio.value_selected)].cpu().detach().numpy(), cv2.COLOR_GRAY2RGB)
     ax.imshow(im2)
     fig.canvas.draw_idle()
 
 def update_L(val):
     L = int(val)
     im = model.forward()
-    im2 = cv2.cvtColor(im[:, :, L].cpu().detach().numpy(), cv2.COLOR_GRAY2RGB)
+    im2 = cv2.cvtColor(im[0, 0, ..., L].cpu().detach().numpy(), cv2.COLOR_GRAY2RGB)
     ax.imshow(im2)
     fig.canvas.draw_idle()
 
