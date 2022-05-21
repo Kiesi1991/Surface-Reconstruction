@@ -17,7 +17,7 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
                        epochs=3001,
                        intensity=2.5,
                        rough=(0.5,0.5,True), diffuse=(0.5,0.5,True), reflectance=(0.5,0.5,True),
-                       synthetic=False, surface_opimization=True):
+                       synthetic=False, surface_opimization=True, quick_search=False, plot_every=1000):
 
     if torch.cuda.is_available():
         device = 'cuda'
@@ -30,7 +30,7 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
     samples = get_real_samples(path_target)
 
     camera, lights, mesh = get_scene_locations(batch_real_samples=1) if synthetic else get_scene_locations(batch_real_samples=samples.shape[0])
-    path = create_next_folder(path_results)
+    path = path_results if quick_search else create_next_folder(path_results)
 
     if synthetic:
         light_intensity = torch.ones((1,1,1,1,12,1))
@@ -77,64 +77,107 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
                 errors.append(statistics.mean(errs[-10:]))
                 #epoch_time = TimeEpoch.event()
                 #print(f'Epoch {epoch} / {epochs} - Time per Epoch {epoch_time/50}')
-            if epoch % 2000 == 0:
+            if epoch % plot_every == 0:
                 #_ = TimePlots.event()
-                os.mkdir(os.path.join(path, f'Epoch-{epoch}'))
-                path2 = os.path.join(path, f'Epoch-{epoch}')
-                #print(f'Rough {model.rough.item()} Diffuse {torch.sigmoid(model.diffuse).item()} reflectance {model.reflectance.item()}')
-                num_L = samples.shape[4]
-                for L in range(num_L):
-                    plt.figure(figsize=(20, 10))
-                    plt.subplot(1, 2, 1)
-
-                    plt.imshow(samples[0,0,...,L].cpu().detach().numpy())
-                    plt.clim(0, 1.0)
-
-                    plt.subplot(1, 2, 2)
-
-                    plt.imshow(pred[0,0,...,L].cpu().detach().numpy())
-                    plt.clim(0, 1.0)
-
-                    plt.savefig(os.path.join(path2, f'{L}.png'))
-                    plt.close()
-
-                    p = cv2.cvtColor(pred[0,0,...,L].cpu().detach().numpy(), cv2.COLOR_GRAY2RGB)
-                    t = cv2.cvtColor(samples[0,0,...,L].cpu().detach().numpy(), cv2.COLOR_GRAY2RGB)
-
-                    plt.figure(figsize=(20, 10))
-                    plt.subplot(1, 2, 1)
-                    plt.imshow(t)
-                    plt.clim(0, 1.0)
-
-                    plt.subplot(1, 2, 2)
-                    plt.imshow(p)
-                    plt.clim(0, 1.0)
-
-                    plt.savefig(os.path.join(path2, f'TrueRGB-{L}.png'))
-                    plt.close()
-
-                x = np.linspace(0, len(errors) - 1, len(errors))
-                plt.plot(x, errors, label='errors')
-                plt.xlabel('epoch')
-                plt.ylabel('Error')
-                plt.legend()
-                plt.savefig(os.path.join(path, f'error.png'))
-                plt.close()
 
                 roughs.append(model.rough.cpu().detach().numpy().item())
                 diffuses.append(model.diffuse.cpu().detach().numpy().item())
                 reflectances.append(model.reflectance.cpu().detach().numpy().item())
                 intensities.append(model.intensity.cpu().detach().numpy().item())
 
-                x = np.linspace(0, len(roughs) - 1, len(roughs))
+                if not quick_search:
+                    os.mkdir(os.path.join(path, f'Epoch-{epoch}'))
+                    path2 = os.path.join(path, f'Epoch-{epoch}')
+                    #print(f'Rough {model.rough.item()} Diffuse {torch.sigmoid(model.diffuse).item()} reflectance {model.reflectance.item()}')
+                    num_L = samples.shape[4]
+                    for L in range(num_L):
+                        plt.figure(figsize=(20, 10))
+                        plt.subplot(1, 2, 1)
+
+                        plt.imshow(samples[0,0,...,L].cpu().detach().numpy())
+                        plt.clim(0, 1.0)
+
+                        plt.subplot(1, 2, 2)
+
+                        plt.imshow(pred[0,0,...,L].cpu().detach().numpy())
+                        plt.clim(0, 1.0)
+
+                        plt.savefig(os.path.join(path2, f'{L}.png'))
+                        plt.close()
+
+                        p = cv2.cvtColor(pred[0,0,...,L].cpu().detach().numpy(), cv2.COLOR_GRAY2RGB)
+                        t = cv2.cvtColor(samples[0,0,...,L].cpu().detach().numpy(), cv2.COLOR_GRAY2RGB)
+
+                        plt.figure(figsize=(20, 10))
+                        plt.subplot(1, 2, 1)
+                        plt.imshow(t)
+                        plt.clim(0, 1.0)
+
+                        plt.subplot(1, 2, 2)
+                        plt.imshow(p)
+                        plt.clim(0, 1.0)
+
+                        plt.savefig(os.path.join(path2, f'TrueRGB-{L}.png'))
+                        plt.close()
+
+                    x = np.linspace(0, len(errors) - 1, len(errors))
+                    plt.plot(x, errors, label='errors')
+                    plt.xlabel('epoch')
+                    plt.ylabel('Error')
+                    plt.legend()
+                    plt.savefig(os.path.join(path, f'error.png'))
+                    plt.close()
+
+                    if synthetic:
+                        surface_line = surface.cpu().detach().numpy()[0, 200, :]
+                        pred_surface_line = model.mesh.cpu().detach().numpy()[0, 200, :]
+
+                        x = np.linspace(0, len(surface_line) - 1, len(surface_line))
+                        plt.plot(x, surface_line, label='ground truth')
+                        plt.plot(x, pred_surface_line, label='prediction')
+                        plt.xlabel('x')
+                        plt.ylabel('height')
+                        plt.legend()
+                        plt.savefig(os.path.join(path, f'compare-height-{epoch}.png'))
+                        plt.close()
+
+                    with open(os.path.join(path2, 'parameters.txt'), 'w') as f:
+                        f.write(f'Parameters {parameters}\n'
+                                f'Rough {model.rough.item()} Diffuse {model.diffuse.item()} Reflectance {model.reflectance.item()} \n'
+                                f'Camera {model.camera.detach()}\n'
+                                f'Lights {model.lights.detach()}\n'
+                                f'Surface Max {model.mesh.detach().max()}'
+                                f'Surface min {model.mesh.detach().min()}\n'
+                                f'Light Intensity {model.light_intensity.detach()}\n'
+                                f'Intensity {model.intensity.detach()}\n'
+                                f'X {model.x.detach()}\n'
+                                f'Y {model.y.detach()}\n'
+                                f'AVG Err {statistics.mean(errs[-10:])}')
+
+                    torch.save(model.rough.detach().cpu(), os.path.join(path2, 'rough.pt'))
+                    torch.save(model.diffuse.detach().cpu(), os.path.join(path2, 'diffuse.pt'))
+                    torch.save(model.reflectance.detach().cpu(), os.path.join(path2, 'reflectance.pt'))
+                    torch.save(model.camera.detach().cpu(), os.path.join(path2, 'camera.pt'))
+                    torch.save(model.lights.detach().cpu(), os.path.join(path2, 'lights.pt'))
+                    torch.save(model.light_intensity.detach(), os.path.join(path2, 'light_intensity.pt'))
+                    torch.save(model.intensity.detach(), os.path.join(path2, 'intensity.pt'))
+                    torch.save(model.mesh.detach(), os.path.join(path2, 'surface.pt'))
+                    torch.save(model.x.detach(), os.path.join(path2, 'x.pt'))
+                    torch.save(model.y.detach(), os.path.join(path2, 'y.pt'))
+
+                if synthetic:
+                    plt.figure(figsize=(20, 10))
+                    plt.subplot(1, 2, 1)
+
+                x = np.linspace(0, len(roughs) - 1, len(roughs)) * plot_every
                 plt.plot(x, roughs, label='rough', color='red')
                 plt.plot(x, diffuses, label='diffuse', color='green')
                 plt.plot(x, reflectances, label='reflectance', color='blue')
-                #plt.plot(x, intensities, label='intensity')
+                # plt.plot(x, intensities, label='intensity')
                 plt.xlabel('epoch')
                 plt.ylabel('value')
                 if synthetic:
-                    plt.plot(x,[rough[0]]*len(roughs), color='red', linestyle='dashed')
+                    plt.plot(x, [rough[0]] * len(roughs), color='red', linestyle='dashed')
                     plt.plot(x, [diffuse[0]] * len(diffuses), color='green', linestyle='dashed')
                     plt.plot(x, [reflectance[0]] * len(reflectances), color='blue', linestyle='dashed')
                     plt.title(f'parameters with constant intensity {model.intensity.cpu().detach().numpy().item()}\n'
@@ -143,10 +186,10 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
                 else:
                     plt.title(f'parameters with constant intensity {model.intensity.cpu().detach().numpy().item()}')
                 plt.legend()
-                plt.savefig(os.path.join(path, f'parameters.png'))
-                plt.close()
 
                 if synthetic:
+                    plt.subplot(1, 2, 2)
+
                     surface_line = surface.cpu().detach().numpy()[0, 200, :]
                     pred_surface_line = model.mesh.cpu().detach().numpy()[0, 200, :]
 
@@ -156,32 +199,9 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
                     plt.xlabel('x')
                     plt.ylabel('height')
                     plt.legend()
-                    plt.savefig(os.path.join(path, f'compare-height-{epoch}.png'))
-                    plt.close()
 
-                with open(os.path.join(path2, 'parameters.txt'), 'w') as f:
-                    f.write(f'Parameters {parameters}\n'
-                            f'Rough {model.rough.item()} Diffuse {model.diffuse.item()} Reflectance {model.reflectance.item()} \n'
-                            f'Camera {model.camera.detach()}\n'
-                            f'Lights {model.lights.detach()}\n'
-                            f'Surface Max {model.mesh.detach().max()}'
-                            f'Surface min {model.mesh.detach().min()}\n'
-                            f'Light Intensity {model.light_intensity.detach()}\n'
-                            f'Intensity {model.intensity.detach()}\n'
-                            f'X {model.x.detach()}\n'
-                            f'Y {model.y.detach()}\n'
-                            f'AVG Err {statistics.mean(errs[-10:])}')
-
-                torch.save(model.rough.detach().cpu(), os.path.join(path2, 'rough.pt'))
-                torch.save(model.diffuse.detach().cpu(), os.path.join(path2, 'diffuse.pt'))
-                torch.save(model.reflectance.detach().cpu(), os.path.join(path2, 'reflectance.pt'))
-                torch.save(model.camera.detach().cpu(), os.path.join(path2, 'camera.pt'))
-                torch.save(model.lights.detach().cpu(), os.path.join(path2, 'lights.pt'))
-                torch.save(model.light_intensity.detach(), os.path.join(path2, 'light_intensity.pt'))
-                torch.save(model.intensity.detach(), os.path.join(path2, 'intensity.pt'))
-                torch.save(model.mesh.detach(), os.path.join(path2, 'surface.pt'))
-                torch.save(model.x.detach(), os.path.join(path2, 'x.pt'))
-                torch.save(model.y.detach(), os.path.join(path2, 'y.pt'))
+                plt.savefig(os.path.join(path, f'{rough}-{diffuse}-{reflectance}.png'))
+                plt.close()
 
                 #plotting_time = TimePlots.event()
                 #print(f'Plotting Time {plotting_time}')

@@ -6,20 +6,30 @@ from utils import get_scene_parameters
 load_parameters = False
 train = False
 
-roughs = [(0.1,0.5,True),(0.3,0.5,True),(0.3,0.5,True)]
+'''roughs = [(0.1,0.5,True),(0.2,0.5,True),(0.8,0.5,True), (0.9,0.5,True)]
+diffuses = [(0.1,0.5,True),(0.2,0.5,True),(0.8,0.5,True), (0.9,0.5,True)]
+reflactances = [(0.1,0.5,True),(0.2,0.5,True),(0.8,0.5,True), (0.9,0.5,True)]'''
 
-if load_parameters:
-    path = os.path.join('results', 'optimization', '1', 'Epoch-3000')
-    print(f'1) load parameter from {path}')
-    parameters = get_scene_parameters(path)
-else:
-    print('1) optimize scene parameters for training')
-    parameters = optimizeParameters(path_target='realSamples1', path_results=os.path.join('results', 'optimization', 'P-rdf'),
-                                    epochs=8001, intensity=5.0, weight_decay=0.0,
-                                    # (synthetic, initial, parameter)
-                                    rough=(0.3,0.5,True), diffuse=(0.4,0.5,True), reflectance=(0.5,0.4,True),
-                                    synthetic=True, surface_opimization=False)
-print('---'*35)
+roughs = [(0.5,0.5,True)]
+diffuses = [(0.5,0.5,True)]
+reflactances = [(0.5,0.5,True)]
+
+for rough in roughs:
+    for diffuse in diffuses:
+        for reflactance in reflactances:
+
+            if load_parameters:
+                path = os.path.join('results', 'optimization', '1', 'Epoch-3000')
+                print(f'1) load parameter from {path}')
+                parameters = get_scene_parameters(path)
+            else:
+                print('1) optimize scene parameters for training')
+                parameters = optimizeParameters(path_target='realSamples1', path_results=os.path.join('results', 'optimization', 'rough-diffuse-reflactance-surface-varyInitialValues'),
+                                                epochs=40001, intensity=5.0, weight_decay=0.0,
+                                                # (synthetic, initial, parameter)
+                                                rough=rough, diffuse=diffuse, reflectance=reflactance,
+                                                synthetic=True, surface_opimization=True, quick_search=True, plot_every=1000)
+            print('---'*35)
 
 if train:
     print('2) train NN with fake images')
