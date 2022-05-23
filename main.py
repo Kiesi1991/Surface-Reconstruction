@@ -1,7 +1,7 @@
 import os.path
 from optimize_parameters import optimizeParameters
 from mainFilament import train_NN
-from utils import get_scene_parameters
+from utils import get_scene_parameters, get_light_attenuation
 
 load_parameters = False
 train = False
@@ -10,9 +10,11 @@ train = False
 diffuses = [(0.1,0.5,True),(0.2,0.5,True),(0.8,0.5,True), (0.9,0.5,True)]
 reflactances = [(0.1,0.5,True),(0.2,0.5,True),(0.8,0.5,True), (0.9,0.5,True)]'''
 
-roughs = [(0.5,0.5,True)]
-diffuses = [(0.5,0.5,True)]
-reflactances = [(0.5,0.5,True)]
+roughs = [(0.2,0.2,True)]#, (0.5,0.5,True), (0.8,0.8,True)]
+diffuses = [(0.2,0.2,True)]#, (0.5,0.5,True), (0.8,0.8,True)]
+reflactances = [(0.2,0.2,True)]#, (0.5,0.5,True), (0.8,0.8,True)]
+
+light_attenuation = get_light_attenuation()
 
 for rough in roughs:
     for diffuse in diffuses:
@@ -24,11 +26,11 @@ for rough in roughs:
                 parameters = get_scene_parameters(path)
             else:
                 print('1) optimize scene parameters for training')
-                parameters = optimizeParameters(path_target='realSamples1', path_results=os.path.join('results', 'optimization', 'rough-diffuse-reflactance-surface-varyInitialValues'),
-                                                epochs=40001, intensity=5.0, weight_decay=0.0,
+                parameters = optimizeParameters(path_target='realSamples1', path_results=os.path.join('results', 'optimization', 'rough-diffuse-reflactance-test'),
+                                                epochs=40001, intensity=5.0, weight_decay=0.0, light_attenuation=light_attenuation,
                                                 # (synthetic, initial, parameter)
                                                 rough=rough, diffuse=diffuse, reflectance=reflactance,
-                                                synthetic=True, surface_opimization=True, quick_search=True, plot_every=1000)
+                                                synthetic=True, surface_opimization=False, quick_search=True, plot_every=1000)
             print('---'*35)
 
 if train:

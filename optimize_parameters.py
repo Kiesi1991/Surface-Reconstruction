@@ -14,7 +14,7 @@ from shaders import FilamentShading
 
 def optimizeParameters(path_target='realSamples', path_results=os.path.join('results', 'optimization'),
                        lr=1e-3, weight_decay=0.,
-                       epochs=3001,
+                       epochs=3001, light_attenuation=1.0,
                        intensity=2.5,
                        rough=(0.5,0.5,True), diffuse=(0.5,0.5,True), reflectance=(0.5,0.5,True),
                        synthetic=False, surface_opimization=True, quick_search=False, plot_every=1000):
@@ -40,7 +40,7 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
         samples = shader.forward(surface).permute((0,2,3,1)).unsqueeze(0)
 
     model = OptimizeParameters((mesh,True) if surface_opimization else (surface,False),
-                               (lights,False), (camera,False), device=device,
+                               (lights,False), (camera,False), device=device, light_attenuation=light_attenuation,
                                rough=rough[1], diffuse=diffuse[1], reflectance=reflectance[1],
                                par_r=rough[2], par_d=diffuse[2], par_ref=reflectance[2],
                                get_para=False, intensity=intensity)

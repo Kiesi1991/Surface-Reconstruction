@@ -84,7 +84,7 @@ class ResBlock(nn.Module):
 ###############################################
 
 class OptimizeParameters(nn.Module):
-    def __init__(self, surface, lights, camera,
+    def __init__(self, surface, lights, camera, light_attenuation=1.0,
                  par_li=False,
                  par_r=True, par_d=True, par_ref=True,
                  par_x=False, par_y=False,
@@ -138,7 +138,7 @@ class OptimizeParameters(nn.Module):
         self.x = Parameter(torch.tensor(x).to(device)) if par_x else torch.tensor(x).to(device)
         self.y = Parameter(torch.tensor(y)) if par_y else torch.tensor(y)
 
-        self.la = get_light_attenuation().to(device)
+        self.la = light_attenuation.to(device)
 
         self.device = device
 
