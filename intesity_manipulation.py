@@ -80,7 +80,7 @@ def update(val):
     model.rough = torch.tensor(rough)
     model.reflectance = torch.tensor(reflectance)
     model.diffuse = torch.tensor(diffuse)
-    model.intensity = torch.tensor(intensity)
+    model.intensity = torch.tensor(intensity)#
     pred = model.forward()
 
     height_profile_x_pred, height_profile_y_pred = get_height_profile(pred[0, ..., int(radio.value_selected)])
