@@ -254,3 +254,12 @@ class TimeDelta():
             timedelta = 0
         self.time = eventtime
         return timedelta
+
+
+def get_height_profile(surface):
+
+    B,H,W = surface.shape
+    height_profile_x = surface.cpu().detach().numpy()[0, H//2, :]
+    height_profile_y = surface.cpu().detach().numpy()[0, :, W//2]
+
+    return height_profile_x, height_profile_y

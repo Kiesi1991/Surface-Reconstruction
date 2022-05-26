@@ -45,6 +45,41 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
                                par_r=rough[2], par_d=diffuse[2], par_ref=reflectance[2],
                                get_para=False, intensity=intensity)
 
+    pred = model.forward()
+
+    for L in range(12):
+
+        height_profile_x_la, height_profile_y_la = get_height_profile(light_attenuation[0,...,L,0])
+        height_profile_x_true, height_profile_y_true = get_height_profile(samples[0,...,L])
+        height_profile_x_pred, height_profile_y_pred = get_height_profile(pred[0,...,L])
+
+        x = np.linspace(0, len(height_profile_x_la) - 1, len(height_profile_x_la))
+        y = np.linspace(0, len(height_profile_y_la) - 1, len(height_profile_y_la))
+
+        plt.figure(figsize=(20, 10))
+        plt.subplot(1, 2, 1)
+
+        plt.plot(x, height_profile_x_la, label='la')
+        plt.plot(x, height_profile_x_true, label='true')
+        plt.plot(x, height_profile_x_pred, label='pred')
+        plt.xlabel('pixels')
+        plt.ylabel('height')
+        plt.legend()
+        plt.title('profile in x-direction')
+
+        plt.subplot(1, 2, 2)
+
+
+        plt.plot(y, height_profile_y_la, label='la')
+        plt.plot(y, height_profile_y_true, label='true')
+        plt.plot(y, height_profile_y_pred, label='pred')
+        plt.xlabel('pixels')
+        plt.ylabel('height')
+        plt.legend()
+        plt.title('profile in y-direction')
+
+        plt.show()
+
     parameters = []
     for name, param in model.named_parameters():
         if param.requires_grad:
@@ -129,17 +164,35 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
                     plt.close()
 
                     if synthetic:
-                        surface_line = surface.cpu().detach().numpy()[0, 200, :]
-                        pred_surface_line = model.mesh.cpu().detach().numpy()[0, 200, :]
+                        height_profile_x_gt, height_profile_y_gt = get_height_profile(surface)
+                    height_profile_x_pred, height_profile_y_pred = get_height_profile(model.mesh)
 
-                        x = np.linspace(0, len(surface_line) - 1, len(surface_line))
-                        plt.plot(x, surface_line, label='ground truth')
-                        plt.plot(x, pred_surface_line, label='prediction')
-                        plt.xlabel('x')
-                        plt.ylabel('height')
-                        plt.legend()
-                        plt.savefig(os.path.join(path, f'compare-height-{epoch}.png'))
-                        plt.close()
+                    x = np.linspace(0, len(height_profile_x_pred) - 1, len(height_profile_x_pred))
+                    y = np.linspace(0, len(height_profile_y_pred) - 1, len(height_profile_y_pred))
+
+                    plt.figure(figsize=(20, 10))
+                    plt.subplot(1, 2, 1)
+
+                    if synthetic:
+                        plt.plot(x, height_profile_x_gt, label='ground truth')
+                    plt.plot(x, height_profile_x_pred, label='prediction')
+                    plt.xlabel('pixels')
+                    plt.ylabel('height')
+                    plt.legend()
+                    plt.title('profile in x-direction')
+
+                    plt.subplot(1, 2, 2)
+
+                    if synthetic:
+                        plt.plot(y, height_profile_y_gt, label='ground truth')
+                    plt.plot(y, height_profile_y_pred, label='prediction')
+                    plt.xlabel('pixels')
+                    plt.ylabel('height')
+                    plt.legend()
+                    plt.title('profile in y-direction')
+
+                    plt.savefig(os.path.join(path, f'height-profile.png'))
+                    plt.close()
 
                     with open(os.path.join(path2, 'parameters.txt'), 'w') as f:
                         f.write(f'Parameters {parameters}\n'
