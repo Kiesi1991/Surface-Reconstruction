@@ -116,7 +116,7 @@ def getVectors(surface, targetLocation, x, y, norm=True):
         return V
 
 def normalize(vector):
-    Norms = torch.linalg.norm(vector, axis=4, keepdims=True)
+    Norms = torch.linalg.norm(vector, axis=-1, keepdims=True)
     return vector/Norms
 
 def get_light_attenuation():

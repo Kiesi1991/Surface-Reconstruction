@@ -84,8 +84,8 @@ class ResBlock(nn.Module):
 ###############################################
 
 class OptimizeParameters(nn.Module):
-    def __init__(self, surface, lights, camera, light_attenuation=1.0,
-                 par_li=False,
+    def __init__(self, surface, lights, camera, mean_intensity=1.0,
+                 shadowing=True, par_li=False,
                  par_r=True, par_d=True, par_ref=True,
                  par_x=False, par_y=False,
                  device='cpu', get_para=True,
@@ -138,10 +138,12 @@ class OptimizeParameters(nn.Module):
         self.x = Parameter(torch.tensor(x).to(device)) if par_x else torch.tensor(x).to(device)
         self.y = Parameter(torch.tensor(y)) if par_y else torch.tensor(y)
 
-        self.la = light_attenuation.to(device)
+        self.mean_intensity = mean_intensity.to(device)
 
         self.device = device
 
+        self.shadowing = shadowing
+        self.shadow = None
 
         '''if path is not None:
             mesh = torch.load(os.path.join(path, 'surface.pt')).to(device)
@@ -202,9 +204,18 @@ class OptimizeParameters(nn.Module):
 
         mesh = self.mesh - torch.mean(self.mesh)
 
-        color = filament_renderer(mesh, self.camera, self.lights, la=self.la,
+        color = filament_renderer(mesh, self.camera, self.lights, mean_intensity=self.mean_intensity,
                                  rough=rough, diffuse=diffuse, light_intensity=light_intensity, light_color=self.light_color, reflectance=self.reflectance, x=self.x, y=self.y)
-        return color.squeeze(-1)
+
+        if self.shadowing and self.shadow is None:
+            self.shadow = (self.mean_intensity / color).detach()
+
+        #self.shadowing = (self.mean_intensity / color).detach()
+
+        if self.shadowing:
+            return (color * self.shadow).squeeze(-1)
+        else:
+            return color.squeeze(-1)
 
 
 
