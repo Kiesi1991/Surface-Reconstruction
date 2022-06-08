@@ -13,9 +13,9 @@ from tqdm import tqdm
 from shaders import FilamentShading
 
 def optimizeParameters(path_target='realSamples', path_results=os.path.join('results', 'optimization'),
-                       lr=1e-3, weight_decay=0.,
+                       lr=1e-4, weight_decay=0.,
                        epochs=3001, mean_intensity=1.0,
-                       intensity=2.5,
+                       intensity=2.5, selected_lights='all',
                        rough=(0.5,0.5,True), diffuse=(0.5,0.5,True), reflectance=(0.5,0.5,True),
                        synthetic=False, surface_opimization=True, quick_search=False, plot_every=1000):
 
@@ -28,6 +28,15 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
         os.mkdir(os.path.join(path_results))
 
     samples = get_real_samples(path_target)
+
+    if selected_lights=='bottom':
+        start , end = 8, 11
+    elif selected_lights=='middle':
+        start, end = 4, 7
+    elif selected_lights=='top':
+        start, end = 0, 3
+    else:
+        start, end = 0, 11
 
     camera, lights, mesh = get_scene_locations(batch_real_samples=1) if synthetic else get_scene_locations(batch_real_samples=samples.shape[0])
     path = path_results if quick_search else create_next_folder(path_results)
@@ -98,7 +107,7 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
     #TimePlots = TimeDelta()
     for epoch in tqdm(range(epochs)):
             pred = model.forward()
-            err = mse(pred.to(device), samples.to(device)) #+ 0.001 * (model.rough - model.reflectance) #+ 0.001 * (model.mesh**2).sum()
+            err = mse(pred[...,start:end+1].to(device), samples[...,start:end+1].to(device)) #+ 0.001 * (model.rough - model.reflectance) #+ 0.001 * (model.mesh**2).sum()
             errs.append(err.item())
             optimizer.zero_grad()
             err.backward()
@@ -194,6 +203,18 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
                     plt.savefig(os.path.join(path, f'height-profile.png'))
                     plt.close()
 
+                    normal_vectors = getNormals(model.mesh.detach(), x=model.x.detach(), y=model.y.detach())
+                    #light_vectors = getVectors(model.mesh.detach(), model.lights.detach().unsqueeze(1).unsqueeze(1).unsqueeze(0), x=model.x.detach(), y=model.y.detach())
+                    z_vector = torch.tensor([0.,0.,1.]).to(device).unsqueeze(0).unsqueeze(0).unsqueeze(0).unsqueeze(0)
+
+                    angles = torch.acos((z_vector * normal_vectors).sum(dim=-1, keepdim=True)) * 90 / (torch.pi/2)
+
+                    plt.imshow(angles[0,0,...,0].cpu().detach().numpy())
+                    plt.colorbar()
+                    plt.savefig(os.path.join(path, f'angles.png'))
+                    plt.close()
+
+
                     with open(os.path.join(path2, 'parameters.txt'), 'w') as f:
                         f.write(f'Parameters {parameters}\n'
                                 f'Rough {model.rough.item()} Diffuse {model.diffuse.item()} Reflectance {model.reflectance.item()} \n'
@@ -217,6 +238,7 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
                     torch.save(model.mesh.detach(), os.path.join(path2, 'surface.pt'))
                     torch.save(model.x.detach(), os.path.join(path2, 'x.pt'))
                     torch.save(model.y.detach(), os.path.join(path2, 'y.pt'))
+                    torch.save(model.shadow.detach(), os.path.join(path2, 'shadow.pt'))
 
                 if synthetic:
                     plt.figure(figsize=(20, 10))

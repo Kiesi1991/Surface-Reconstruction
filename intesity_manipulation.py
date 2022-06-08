@@ -8,6 +8,7 @@ import torch
 import os
 from utils import *
 from optimize_parameters import optimizeParameters
+from matplotlib.widgets import TextBox
 
 rough, diffuse, relectance = 0.334, 0.597, 0.793
 intensity = 53.2
@@ -65,10 +66,10 @@ ax2.legend()
 ax2.set_title('profile in y-direction')
 
 axcolor = 'yellow'
-rough_slider = plt.axes([0.20, 0.11, 0.65, 0.03], facecolor=axcolor)
-reflectance_slider = plt.axes([0.20, 0.15, 0.65, 0.03], facecolor=axcolor)
-diffuse_slider = plt.axes([0.20, 0.19, 0.65, 0.03], facecolor=axcolor)
-intensity_slider = plt.axes([0.20, 0.23, 0.65, 0.03], facecolor=axcolor)
+rough_slider = plt.axes([0.20, 0.16, 0.3, 0.03], facecolor=axcolor)
+reflectance_slider = plt.axes([0.20, 0.2, 0.3, 0.03], facecolor=axcolor)
+diffuse_slider = plt.axes([0.20, 0.24, 0.3, 0.03], facecolor=axcolor)
+intensity_slider = plt.axes([0.20, 0.28, 0.3, 0.03], facecolor=axcolor)
 Rslider = Slider(rough_slider, 'Rough', 0.0, 1.0, valinit=rough)
 Fslider = Slider(reflectance_slider, 'reflectance', 0.0, 1.0, valinit=relectance)
 Dslider = Slider(diffuse_slider, 'Diffuse', 0.0, 1.0, valinit=diffuse)
@@ -77,8 +78,25 @@ Islider = Slider(intensity_slider, 'Intensity', 0.0, 100.0, valinit=intensity)
 rax = plt.axes([0.01, 0.4, 0.06, 0.4], facecolor=axcolor) #[left, bottom, width, height]
 radio = RadioButtons(rax, ('0','1','2','3','4','5','6','7','8','9','10','11'))
 
-axstart = plt.axes([0.6, 0.01, 0.3, 0.075])
-start = Button(axstart, 'Start Optimization')
+selected_lights = plt.axes([0.01, 0.01, 0.06, 0.3], facecolor=axcolor) #[left, bottom, width, height]
+SelectedLights = RadioButtons(selected_lights, ('all', 'bottom', 'middle', 'top'))
+
+axstart = plt.axes([0.55, 0.01, 0.3, 0.075])
+start = Button(axstart, '->Start Optimization<-', color='yellow')
+
+syn = plt.axes([0.6, 0.16, 0.25, 0.05])
+SynB = Button(syn, 'Synthetic', color='red')
+SynB.__setattr__('value', False)
+SynB.hovercolor = 'red'
+
+itbox = fig.add_axes([0.2, 0.01, 0.3, 0.075])
+iterations = TextBox(itbox, "Iterations", textalignment="center")
+iterations.set_val("10000")
+
+path_results = os.path.join('results', 'optimization', 'Test')
+res_path_box = fig.add_axes([0.2, 0.09, 0.65, 0.05])
+PathResults = TextBox(res_path_box, "Folder results", textalignment="center")
+PathResults.set_val(path_results)
 
 def update(val):
     rough = Rslider.val
@@ -155,15 +173,29 @@ def start_optimization(val):
     reflactance = (0.2, Fslider.val, True)  # , (0.5,0.4,True), (0.8,0.4,True)]
     intensity = Islider.val
 
+    epochs = int(iterations.text) + 1
+    path_results = PathResults.text
+    synthetic = SynB.value
+
+    selected_lights = SelectedLights.value_selected
+
+    parameters = optimizeParameters(path_target='realSamples1', path_results=path_results,
+                                    epochs=epochs, intensity=intensity, weight_decay=0.0, mean_intensity=mean_intensity,
+                                    # (synthetic, initial, parameter)
+                                    rough=rough, diffuse=diffuse, reflectance=reflactance, selected_lights=selected_lights,
+                                    synthetic=synthetic, surface_opimization=True, quick_search=False, plot_every=2000)
+
     plt.close()
 
-    parameters = optimizeParameters(path_target='realSamples1', path_results=os.path.join('results', 'optimization',
-                                                                                          'rough-diffuse-reflactance-surface-Test'),
-                                    epochs=20001, intensity=intensity, weight_decay=0.0, mean_intensity=mean_intensity,
-                                    # (synthetic, initial, parameter)
-                                    rough=rough, diffuse=diffuse, reflectance=reflactance,
-                                    synthetic=False, surface_opimization=True, quick_search=False, plot_every=2000)
-
+def change_synthetic(val):
+    if SynB.value:
+        SynB.value=False
+        SynB.color='red'
+        SynB.hovercolor='red'
+    else:
+        SynB.value=True
+        SynB.color = 'green'
+        SynB.hovercolor = 'green'
 
 Rslider.on_changed(update)
 Fslider.on_changed(update)
@@ -171,5 +203,6 @@ Dslider.on_changed(update)
 Islider.on_changed(update)
 radio.on_clicked(update_L)
 start.on_clicked(start_optimization)
+SynB.on_clicked(change_synthetic)
 
 plt.show()

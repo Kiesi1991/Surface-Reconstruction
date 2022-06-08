@@ -83,7 +83,7 @@ def getNormals(surface, x=4, y=2):
     dfdx = torch.cat((dfdx, dfdx1), dim=2).unsqueeze(3)
 
     dfdy = ((surface[:, 1:, ...] - surface[:, :-1, ...]) / hy)
-    dfdy1 = ((surface[:, -1, ...] - surface[:, -2, ...]) / hx).unsqueeze(1)
+    dfdy1 = ((surface[:, -1, ...] - surface[:, -2, ...]) / hy).unsqueeze(1)
     dfdy = torch.cat((dfdy, dfdy1), dim=1).unsqueeze(3)
 
     z = torch.ones_like(dfdx)
@@ -205,11 +205,11 @@ def get_real_samples(path):
 def get_scene_locations(batch_real_samples):
     resolution = (batch_real_samples, 386, 516)
 
-    cameraDistance = 8.
+    cameraDistance = 8.0679
     camera = torch.tensor([[[[[0, 0, cameraDistance]]]]])
 
-    h1, h2, h3 = 0.79, 3.29, 5.79
-    r1, r2, r3 = 2.975, 2.660705446, 1.937933168
+    h1, h2, h3 = 0.79, 3.55, 6.72178
+    r1, r2, r3 = 2.975, 2.904641, 2.376113861
 
     locationLights = [[0.0, -r3, h3], [r3, 0.0, h3],
                       [0.0, r3, h3], [-r3, 0.0, h3],
@@ -233,6 +233,7 @@ def get_scene_parameters(path):
     reflectance = torch.load(os.path.join(path, 'reflectance.pt'))
     light_intensity = torch.load(os.path.join(path, 'light_intensity.pt'))
     intensity = torch.load(os.path.join(path, 'intensity.pt'))
+    shadow = torch.load(os.path.join(path, 'shadow.pt'))
 
     x = torch.load(os.path.join(path, 'x.pt'))
     y = torch.load(os.path.join(path, 'y.pt'))
@@ -240,6 +241,7 @@ def get_scene_parameters(path):
     return {'surface':surface, 'lights':lights, 'camera':camera,
             'rough':rough, 'diffuse':diffuse, 'reflectance':reflectance,
             'light_intensity':light_intensity, 'intensity':intensity,
+            'shadow': shadow,
             'x':x, 'y':y}
 
 class TimeDelta():

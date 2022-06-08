@@ -8,14 +8,21 @@ import torch
 import os
 from utils import get_scene_parameters, get_light_attenuation
 
-path = os.path.join('results', 'optimization', 'rough-diffuse-reflactance-surface-TrueSurface', '1', 'Epoch-50000')
+path = os.path.join('results', 'optimization', 'Test01', '0', 'Epoch-10000')
 parameters = get_scene_parameters(path)
 
+rough, diffuse, reflectance = parameters['rough'].item(), parameters['diffuse'].item(), parameters['reflectance'].item()
+intensity = parameters['intensity'].item()
+
 model = OptimizeParameters((parameters['surface'][0].unsqueeze(0), False), (parameters['lights'], False), (parameters['camera'], False),
-                 par_li=False, light_attenuation=get_light_attenuation(),
+                 rough=rough, diffuse=diffuse, reflectance=reflectance, intensity=intensity,
+                 par_li=False, mean_intensity=get_light_attenuation(),
                  par_r=False, par_d=False, par_ref=False,
                  par_x=False, par_y=False, get_para=False)
 model.eval()
+
+model.shadow = parameters['shadow'].to(model.device)
+
 im = model.forward()
 
 im2 = cv2.cvtColor(im[0,0,...,0].cpu().detach().numpy(), cv2.COLOR_GRAY2RGB)
@@ -32,10 +39,10 @@ rough_slider = plt.axes([0.20, 0.01, 0.65, 0.03], facecolor=axcolor)
 reflectance_slider = plt.axes([0.20, 0.05, 0.65, 0.03], facecolor=axcolor)
 diffuse_slider = plt.axes([0.20, 0.09, 0.65, 0.03], facecolor=axcolor)
 intensity_slider = plt.axes([0.20, 0.13, 0.65, 0.03], facecolor=axcolor)
-Rslider = Slider(rough_slider, 'Rough', 0.0, 1.0, valinit=0.5)
-Fslider = Slider(reflectance_slider, 'reflectance', 0.0, 1.0, valinit=0.5)
-Dslider = Slider(diffuse_slider, 'Diffuse', 0.0, 1.0, valinit=0.5)
-Islider = Slider(intensity_slider, 'Intensity', 0.0, 10.0, valinit=3.0)
+Rslider = Slider(rough_slider, 'Rough', 0.0, 1.0, valinit=rough)
+Fslider = Slider(reflectance_slider, 'reflectance', 0.0, 1.0, valinit=reflectance)
+Dslider = Slider(diffuse_slider, 'Diffuse', 0.0, 1.0, valinit=diffuse)
+Islider = Slider(intensity_slider, 'Intensity', 0.0, 100.0, valinit=intensity)
 
 rax = plt.axes([0.05, 0.4, 0.1, 0.4], facecolor=axcolor) #[left, bottom, width, height]
 radio = RadioButtons(rax, ('0','1','2','3','4','5','6','7','8','9','10','11'))

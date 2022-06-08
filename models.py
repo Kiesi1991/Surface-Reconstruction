@@ -136,7 +136,7 @@ class OptimizeParameters(nn.Module):
         #self.f0P = Parameter(torch.tensor(f0P).to(device)) if par_f0 else torch.tensor(f0P).to(device)
 
         self.x = Parameter(torch.tensor(x).to(device)) if par_x else torch.tensor(x).to(device)
-        self.y = Parameter(torch.tensor(y)) if par_y else torch.tensor(y)
+        self.y = Parameter(torch.tensor(y).to(device)) if par_y else torch.tensor(y).to(device)
 
         self.mean_intensity = mean_intensity.to(device)
 
