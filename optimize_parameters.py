@@ -35,6 +35,8 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
         start, end = 4, 7
     elif selected_lights=='top':
         start, end = 0, 3
+    elif selected_lights=='middle+top':
+        start, end = 0, 7
     else:
         start, end = 0, 11
 
@@ -49,7 +51,7 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
         samples = shader.forward(surface).permute((0,2,3,1)).unsqueeze(0)
 
     model = OptimizeParameters((mesh,True) if surface_opimization else (surface,False),
-                               (lights,False), (camera,False), device=device, mean_intensity=mean_intensity,
+                               (lights,True), (camera,False), device=device, mean_intensity=mean_intensity,
                                rough=rough[1], diffuse=diffuse[1], reflectance=reflectance[1],
                                par_r=rough[2], par_d=diffuse[2], par_ref=reflectance[2],
                                get_para=False, intensity=intensity)

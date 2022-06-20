@@ -10,8 +10,8 @@ from utils import *
 from optimize_parameters import optimizeParameters
 from matplotlib.widgets import TextBox
 
-rough, diffuse, relectance = 0.334, 0.597, 0.793
-intensity = 53.2
+rough, diffuse, relectance = 0.295, 0.53, 0.842
+intensity = 70.39
 
 if torch.cuda.is_available():
     device = 'cuda'
@@ -79,7 +79,7 @@ rax = plt.axes([0.01, 0.4, 0.06, 0.4], facecolor=axcolor) #[left, bottom, width,
 radio = RadioButtons(rax, ('0','1','2','3','4','5','6','7','8','9','10','11'))
 
 selected_lights = plt.axes([0.01, 0.01, 0.06, 0.3], facecolor=axcolor) #[left, bottom, width, height]
-SelectedLights = RadioButtons(selected_lights, ('all', 'bottom', 'middle', 'top'))
+SelectedLights = RadioButtons(selected_lights, ('all', 'bottom', 'middle', 'top', 'middle+top'))
 
 axstart = plt.axes([0.55, 0.01, 0.3, 0.075])
 start = Button(axstart, '->Start Optimization<-', color='yellow')
@@ -87,7 +87,7 @@ start = Button(axstart, '->Start Optimization<-', color='yellow')
 syn = plt.axes([0.6, 0.16, 0.25, 0.05])
 SynB = Button(syn, 'Synthetic', color='red')
 SynB.__setattr__('value', False)
-SynB.hovercolor = 'red'
+SynB.hovercolor = 'green'
 
 itbox = fig.add_axes([0.2, 0.01, 0.3, 0.075])
 iterations = TextBox(itbox, "Iterations", textalignment="center")
@@ -191,11 +191,11 @@ def change_synthetic(val):
     if SynB.value:
         SynB.value=False
         SynB.color='red'
-        SynB.hovercolor='red'
+        SynB.hovercolor='green'
     else:
         SynB.value=True
         SynB.color = 'green'
-        SynB.hovercolor = 'green'
+        SynB.hovercolor = 'red'
 
 Rslider.on_changed(update)
 Fslider.on_changed(update)
