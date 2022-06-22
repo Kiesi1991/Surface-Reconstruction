@@ -89,6 +89,12 @@ SynB = Button(syn, 'Synthetic', color='red')
 SynB.__setattr__('value', False)
 SynB.hovercolor = 'green'
 
+para_lights = plt.axes([0.6, 0.22, 0.25, 0.05])
+LP = Button(para_lights, 'lights are paramerters', color='green')
+LP.__setattr__('value', True)
+LP.hovercolor = 'red'
+
+
 itbox = fig.add_axes([0.2, 0.01, 0.3, 0.075])
 iterations = TextBox(itbox, "Iterations", textalignment="center")
 iterations.set_val("10000")
@@ -179,7 +185,7 @@ def start_optimization(val):
 
     selected_lights = SelectedLights.value_selected
 
-    parameters = optimizeParameters(path_target='realSamples1', path_results=path_results,
+    parameters = optimizeParameters(path_target='realSamples1', path_results=path_results, para_lights=LP.value,
                                     epochs=epochs, intensity=intensity, weight_decay=0.0, mean_intensity=mean_intensity,
                                     # (synthetic, initial, parameter)
                                     rough=rough, diffuse=diffuse, reflectance=reflactance, selected_lights=selected_lights,
@@ -197,6 +203,16 @@ def change_synthetic(val):
         SynB.color = 'green'
         SynB.hovercolor = 'red'
 
+def change_light_parameter(val):
+    if LP.value:
+        LP.value=False
+        LP.color='red'
+        LP.hovercolor='green'
+    else:
+        LP.value=True
+        LP.color = 'green'
+        LP.hovercolor = 'red'
+
 Rslider.on_changed(update)
 Fslider.on_changed(update)
 Dslider.on_changed(update)
@@ -204,5 +220,6 @@ Islider.on_changed(update)
 radio.on_clicked(update_L)
 start.on_clicked(start_optimization)
 SynB.on_clicked(change_synthetic)
+LP.on_clicked(change_light_parameter)
 
 plt.show()
