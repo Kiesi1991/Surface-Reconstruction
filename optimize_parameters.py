@@ -19,6 +19,8 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
                        rough=(0.5,0.5,True), diffuse=(0.5,0.5,True), reflectance=(0.5,0.5,True),
                        synthetic=False, surface_opimization=True, quick_search=False, plot_every=1000):
 
+    plot_every = epochs//8
+
     if torch.cuda.is_available():
         device = 'cuda'
     else:
@@ -105,11 +107,16 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
     diffuses = []
     reflectances = []
     intensities = []
+    l_to_origin = []
+    l_to_zero = []
+    lam = 0.000001
     #TimeEpoch = TimeDelta()
     #TimePlots = TimeDelta()
     for epoch in tqdm(range(epochs)):
             pred = model.forward()
-            err = mse(pred[...,start:end+1].to(device), samples[...,start:end+1].to(device)) #+ 0.001 * (model.rough - model.reflectance) #+ 0.001 * (model.mesh**2).sum()
+            distance = torch.linalg.norm(lights.to(device) - model.lights, axis=-1)
+            distance_err = torch.exp(torch.sum(distance, dim=-1))/12
+            err = mse(pred[...,start:end+1].to(device), samples[...,start:end+1].to(device)) + lam * distance_err
             errs.append(err.item())
             optimizer.zero_grad()
             err.backward()
@@ -165,6 +172,31 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
 
                         plt.savefig(os.path.join(path2, f'TrueRGB-{L}.png'))
                         plt.close()
+
+                    l_to_origin.append(torch.linalg.norm(lights.cpu().detach() - model.lights.cpu().detach(), axis=-1).tolist())
+                    x = np.linspace(0, len(l_to_origin) - 1, len(l_to_origin))
+
+                    for L in range(12):
+                        plt.plot(x, np.array(l_to_origin)[:,L], label=f'{L}')
+
+                    plt.xlabel('iteration')
+                    plt.ylabel('distance to origin')
+                    plt.legend()
+                    plt.savefig(os.path.join(path, 'l_to_origin.png'))
+                    plt.close()
+
+                    l_to_zero.append(torch.linalg.norm(model.lights.cpu().detach(), axis=-1).tolist())
+                    x = np.linspace(0, len(l_to_zero) - 1, len(l_to_zero))
+
+                    for L in range(12):
+                        plt.plot(x, np.array(l_to_zero)[:, L], label=f'{L}')
+
+                    plt.xlabel('iteration')
+                    plt.ylabel('distance to zero')
+                    plt.yscale('log')
+                    plt.legend()
+                    plt.savefig(os.path.join(path, 'l_to_zero.png'))
+                    plt.close()
 
                     x = np.linspace(0, len(errors) - 1, len(errors))
                     plt.plot(x, errors, label='errors')
@@ -229,6 +261,7 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
                                 f'X {model.x.detach()}\n'
                                 f'Y {model.y.detach()}\n'
                                 f'AVG Err {statistics.mean(errs[-10:])}\n'
+                                f'Distance Err {distance_err * lam}'
                                 f'Difference lights {torch.linalg.norm(lights.cpu() - model.lights.cpu().detach(), axis=-1)}\n'
                                 f'Optimization with lights: {selected_lights}')
 

@@ -99,7 +99,7 @@ itbox = fig.add_axes([0.2, 0.01, 0.3, 0.075])
 iterations = TextBox(itbox, "Iterations", textalignment="center")
 iterations.set_val("10000")
 
-path_results = os.path.join('results', 'optimization', 'Test')
+path_results = os.path.join('results', 'optimization', '0')
 res_path_box = fig.add_axes([0.2, 0.09, 0.65, 0.05])
 PathResults = TextBox(res_path_box, "Folder results", textalignment="center")
 PathResults.set_val(path_results)
@@ -183,15 +183,19 @@ def start_optimization(val):
     path_results = PathResults.text
     synthetic = SynB.value
 
+    start.color = 'purple'
+    start.label = 'obtimization is running...'
+
     selected_lights = SelectedLights.value_selected
+
+    plt.close()
 
     parameters = optimizeParameters(path_target='realSamples1', path_results=path_results, para_lights=LP.value,
                                     epochs=epochs, intensity=intensity, weight_decay=0.0, mean_intensity=mean_intensity,
                                     # (synthetic, initial, parameter)
                                     rough=rough, diffuse=diffuse, reflectance=reflactance, selected_lights=selected_lights,
-                                    synthetic=synthetic, surface_opimization=True, quick_search=False, plot_every=2000)
+                                    synthetic=synthetic, surface_opimization=True, quick_search=False)
 
-    plt.close()
 
 def change_synthetic(val):
     if SynB.value:
