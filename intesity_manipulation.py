@@ -1,11 +1,7 @@
-import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider, Button, RadioButtons
 import matplotlib
 from models import OptimizeParameters
-import cv2
-import torch
-import os
 from utils import *
 from optimize_parameters import optimizeParameters
 from matplotlib.widgets import TextBox
@@ -97,7 +93,7 @@ LP.hovercolor = 'red'
 
 itbox = fig.add_axes([0.2, 0.01, 0.3, 0.075])
 iterations = TextBox(itbox, "Iterations", textalignment="center")
-iterations.set_val("10000")
+iterations.set_val("100000")
 
 path_results = os.path.join('results', 'optimization', '0')
 res_path_box = fig.add_axes([0.2, 0.09, 0.65, 0.05])
@@ -174,14 +170,13 @@ def update_L(val):
 def start_optimization(val):
     print('1) optimize scene parameters for training')
 
-    rough = (0.2, Rslider.val, True)  # , (0.5,0.4,True), (0.8,0.4,True)]
-    diffuse = (0.2, Dslider.val, True)  # , (0.5,0.4,True), (0.8,0.4,True)]
-    reflactance = (0.2, Fslider.val, True)  # , (0.5,0.4,True), (0.8,0.4,True)]
+    rough = (0.2, Rslider.val, True)
+    diffuse = (0.2, Dslider.val, True)
+    reflactance = (0.2, Fslider.val, True)
     intensity = Islider.val
 
-    epochs = int(iterations.text) + 1
+    its = int(iterations.text) + 1
     path_results = PathResults.text
-    synthetic = SynB.value
 
     start.color = 'purple'
     start.label = 'optimization is running...'
@@ -191,10 +186,10 @@ def start_optimization(val):
     plt.close()
 
     parameters = optimizeParameters(path_target='realSamples1', path_results=path_results, para_lights=LP.value,
-                                    epochs=epochs, intensity=intensity, weight_decay=0.0, mean_intensity=mean_intensity,
+                                    iterations=its, intensity=intensity, weight_decay=0.0, mean_intensity=mean_intensity,
                                     # (synthetic, initial, parameter)
                                     rough=rough, diffuse=diffuse, reflectance=reflactance, selected_lights=selected_lights,
-                                    synthetic=synthetic, surface_opimization=True, quick_search=False)
+                                    synthetic=SynB.value, surface_opimization=True, quick_search=False)
 
 
 def change_synthetic(val):

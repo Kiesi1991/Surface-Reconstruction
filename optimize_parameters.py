@@ -1,12 +1,6 @@
-import torch
-import glob, os
-import imageio
-from PIL import Image
-from torchvision import transforms
 from models import OptimizeParameters
 import matplotlib.pyplot as plt
 import cv2
-import numpy as np
 import statistics
 from utils import *
 from tqdm import tqdm
@@ -14,12 +8,13 @@ from shaders import FilamentShading
 
 def optimizeParameters(path_target='realSamples', path_results=os.path.join('results', 'optimization'),
                        lr=1e-4, weight_decay=0.,
-                       epochs=3001, mean_intensity=1.0,
+                       iterations=3001, mean_intensity=1.0,
                        intensity=2.5, selected_lights='all', para_lights=True,
                        rough=(0.5,0.5,True), diffuse=(0.5,0.5,True), reflectance=(0.5,0.5,True),
-                       synthetic=False, surface_opimization=True, quick_search=False, plot_every=1000):
+                       synthetic=False, surface_opimization=True, quick_search=False,
+                       regularization_function='exp'):
 
-    plot_every = epochs//8
+    plot_every = iterations//8
 
     if torch.cuda.is_available():
         device = 'cuda'
@@ -60,41 +55,6 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
 
     model.lights.requires_grad = False
 
-    '''pred = model.forward()
-
-    for L in range(12):
-
-        height_profile_x_la, height_profile_y_la = get_height_profile(light_attenuation[0,...,L,0])
-        height_profile_x_true, height_profile_y_true = get_height_profile(samples[0,...,L])
-        height_profile_x_pred, height_profile_y_pred = get_height_profile(pred[0,...,L])
-
-        x = np.linspace(0, len(height_profile_x_la) - 1, len(height_profile_x_la))
-        y = np.linspace(0, len(height_profile_y_la) - 1, len(height_profile_y_la))
-
-        plt.figure(figsize=(20, 10))
-        plt.subplot(1, 2, 1)
-
-        plt.plot(x, height_profile_x_la, label='la')
-        plt.plot(x, height_profile_x_true, label='true')
-        plt.plot(x, height_profile_x_pred, label='pred')
-        plt.xlabel('pixels')
-        plt.ylabel('height')
-        plt.legend()
-        plt.title('profile in x-direction')
-
-        plt.subplot(1, 2, 2)
-
-
-        plt.plot(y, height_profile_y_la, label='la')
-        plt.plot(y, height_profile_y_true, label='true')
-        plt.plot(y, height_profile_y_pred, label='pred')
-        plt.xlabel('pixels')
-        plt.ylabel('height')
-        plt.legend()
-        plt.title('profile in y-direction')
-
-        plt.show()
-'''
     parameters = []
     for name, param in model.named_parameters():
         if param.requires_grad:
@@ -113,31 +73,30 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
     l_to_zero = []
     lam = 0.000001
     active_lights = abs(end - start) + 1
-    #TimeEpoch = TimeDelta()
-    #TimePlots = TimeDelta()
-    for epoch in tqdm(range(epochs)):
+
+    for iteration in tqdm(range(iterations)):
             pred = model.forward()
             distance = torch.linalg.norm(lights.to(device) - model.lights, axis=-1)
-            distance_err = torch.exp(torch.sum(distance, dim=-1))/active_lights
-            #distance_err = (torch.sum(distance, dim=-1) ** 2) / active_lights
+            if regularization_function == 'exp':
+                distance_err = torch.exp(torch.sum(distance, dim=-1))/active_lights
+            elif regularization_function == 'square':
+                distance_err = (torch.sum(distance, dim=-1) ** 2) / active_lights
+            else:
+                raise(f'Regularisation function is not defined: {regularization_function}!')
+
             err = mse(pred[...,start:end+1].to(device), samples[...,start:end+1].to(device)) + lam * distance_err
             errs.append(err.item())
             optimizer.zero_grad()
             err.backward()
-            #torch.nn.utils.clip_grad_value_(model.mesh, 0.0001)
             optimizer.step()
-            if epoch == plot_every and para_lights:
+
+            if iteration == plot_every and para_lights:
                 model.lights.requires_grad = True
-            '''if epoch==epochs//2:
-                optimizer = torch.optim.Adam(model.parameters(), lr=lr/10, weight_decay=0.0)
-                print(f'New Lr {lr/10}')'''
-            if epoch % 50 == 0:
-                # print(f'Epoch {epoch} AVG Err {statistics.mean(errs[-10:])} Surface Max {model.mesh.detach().max()} Surface Min {model.mesh.detach().min()}')
+
+            if iteration % 50 == 0:
                 errors.append(statistics.mean(errs[-10:]))
-                #epoch_time = TimeEpoch.event()
-                #print(f'Epoch {epoch} / {epochs} - Time per Epoch {epoch_time/50}')
-            if epoch % plot_every == 0:
-                #_ = TimePlots.event()
+
+            if iteration % plot_every == 0:
 
                 roughs.append(model.rough.cpu().detach().numpy().item())
                 diffuses.append(model.diffuse.cpu().detach().numpy().item())
@@ -145,9 +104,8 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
                 intensities.append(model.intensity.cpu().detach().numpy().item())
 
                 if not quick_search:
-                    os.mkdir(os.path.join(path, f'Epoch-{epoch}'))
-                    path2 = os.path.join(path, f'Epoch-{epoch}')
-                    #print(f'Rough {model.rough.item()} Diffuse {torch.sigmoid(model.diffuse).item()} reflectance {model.reflectance.item()}')
+                    os.mkdir(os.path.join(path, f'iteration-{iteration}'))
+                    path2 = os.path.join(path, f'iteration-{iteration}')
                     num_L = samples.shape[4]
                     for L in range(num_L):
                         plt.figure(figsize=(20, 10))
@@ -180,7 +138,7 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
                         plt.close()
 
                     l_to_origin.append(torch.linalg.norm(lights.cpu().detach() - model.lights.cpu().detach(), axis=-1).tolist())
-                    x = np.linspace(0, len(l_to_origin) - 1, len(l_to_origin))
+                    x = np.linspace(0, len(l_to_origin) - 1, len(l_to_origin)) * plot_every
 
                     for L in range(12):
                         plt.plot(x, np.array(l_to_origin)[:,L], label=f'{L}')
@@ -192,7 +150,7 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
                     plt.close()
 
                     l_to_zero.append(torch.linalg.norm(model.lights.cpu().detach(), axis=-1).tolist())
-                    x = np.linspace(0, len(l_to_zero) - 1, len(l_to_zero))
+                    x = np.linspace(0, len(l_to_zero) - 1, len(l_to_zero)) * plot_every
 
                     for L in range(12):
                         plt.plot(x, np.array(l_to_zero)[:, L], label=f'{L}')
@@ -204,9 +162,9 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
                     plt.savefig(os.path.join(path, 'l_to_zero.png'))
                     plt.close()
 
-                    x = np.linspace(0, len(errors) - 1, len(errors))
+                    x = np.linspace(0, len(errors) - 1, len(errors)) * plot_every
                     plt.plot(x, errors, label='errors')
-                    plt.xlabel('epoch')
+                    plt.xlabel('iteration')
                     plt.ylabel('Error')
                     plt.legend()
                     plt.savefig(os.path.join(path, f'error.png'))
@@ -244,7 +202,6 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
                     plt.close()
 
                     normal_vectors = getNormals(model.mesh.detach(), x=model.x.detach(), y=model.y.detach())
-                    #light_vectors = getVectors(model.mesh.detach(), model.lights.detach().unsqueeze(1).unsqueeze(1).unsqueeze(0), x=model.x.detach(), y=model.y.detach())
                     z_vector = torch.tensor([0.,0.,1.]).to(device).unsqueeze(0).unsqueeze(0).unsqueeze(0).unsqueeze(0)
 
                     angles = torch.acos((z_vector * normal_vectors).sum(dim=-1, keepdim=True)) * 90 / (torch.pi/2)
@@ -292,8 +249,8 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
                 plt.plot(x, roughs, label='rough', color='red')
                 plt.plot(x, diffuses, label='diffuse', color='green')
                 plt.plot(x, reflectances, label='reflectance', color='blue')
-                # plt.plot(x, intensities, label='intensity')
-                plt.xlabel('epoch')
+
+                plt.xlabel('iterations')
                 plt.ylabel('value')
                 if synthetic:
                     plt.plot(x, [rough[0]] * len(roughs), color='red', linestyle='dashed')
@@ -321,9 +278,6 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
 
                 plt.savefig(os.path.join(path, f'{rough}-{diffuse}-{reflectance}.png'))
                 plt.close()
-
-                #plotting_time = TimePlots.event()
-                #print(f'Plotting Time {plotting_time}')
 
     return {'rough' : model.rough.detach().cpu(),
             'diffuse' : model.diffuse.detach().cpu(),
