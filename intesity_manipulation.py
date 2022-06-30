@@ -184,7 +184,7 @@ def start_optimization(val):
     synthetic = SynB.value
 
     start.color = 'purple'
-    start.label = 'obtimization is running...'
+    start.label = 'optimization is running...'
 
     selected_lights = SelectedLights.value_selected
 

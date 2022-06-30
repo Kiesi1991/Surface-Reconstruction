@@ -58,6 +58,8 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
                                par_r=rough[2], par_d=diffuse[2], par_ref=reflectance[2],
                                get_para=False, intensity=intensity)
 
+    model.lights.requires_grad = False
+
     '''pred = model.forward()
 
     for L in range(12):
@@ -110,18 +112,22 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
     l_to_origin = []
     l_to_zero = []
     lam = 0.000001
+    active_lights = abs(end - start) + 1
     #TimeEpoch = TimeDelta()
     #TimePlots = TimeDelta()
     for epoch in tqdm(range(epochs)):
             pred = model.forward()
             distance = torch.linalg.norm(lights.to(device) - model.lights, axis=-1)
-            distance_err = torch.exp(torch.sum(distance, dim=-1))/12
+            distance_err = torch.exp(torch.sum(distance, dim=-1))/active_lights
+            #distance_err = (torch.sum(distance, dim=-1) ** 2) / active_lights
             err = mse(pred[...,start:end+1].to(device), samples[...,start:end+1].to(device)) + lam * distance_err
             errs.append(err.item())
             optimizer.zero_grad()
             err.backward()
             #torch.nn.utils.clip_grad_value_(model.mesh, 0.0001)
             optimizer.step()
+            if epoch == plot_every and para_lights:
+                model.lights.requires_grad = True
             '''if epoch==epochs//2:
                 optimizer = torch.optim.Adam(model.parameters(), lr=lr/10, weight_decay=0.0)
                 print(f'New Lr {lr/10}')'''
@@ -261,7 +267,7 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
                                 f'X {model.x.detach()}\n'
                                 f'Y {model.y.detach()}\n'
                                 f'AVG Err {statistics.mean(errs[-10:])}\n'
-                                f'Distance Err {distance_err * lam}'
+                                f'Distance Err {distance_err * lam}\n'
                                 f'Difference lights {torch.linalg.norm(lights.cpu() - model.lights.cpu().detach(), axis=-1)}\n'
                                 f'Optimization with lights: {selected_lights}')
 
