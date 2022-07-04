@@ -15,7 +15,7 @@ import cv2
 from models import *
 
 
-def train_NN(camera, lights, light_intensity, intensity, rough, diffuse, f0P,x,y):
+def train_NN(camera, lights, light_intensity, intensity, rough, diffuse, reflectance, shadow, x, y):
     resolution = (386, 516)
 
     # training parameters
@@ -54,7 +54,7 @@ def train_NN(camera, lights, light_intensity, intensity, rough, diffuse, f0P,x,y
     else:
         device = 'cpu'
 
-    shader = FilamentShading(camera, lights, light_intensity, intensity, rough=rough, diffuse=diffuse, f0P=f0P, device=device,x=x,y=y)
+    shader = FilamentShading(camera, lights, light_intensity, intensity, rough=rough, diffuse=diffuse, reflectance=reflectance, shadow=shadow, device=device,x=x,y=y)
 
     dataset = DummySet(resolution)
     ground_truth = torch.tensor(createSurface(resolution).tolist())
