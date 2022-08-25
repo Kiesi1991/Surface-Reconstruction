@@ -47,16 +47,16 @@ height_profile_x_pred, height_profile_y_pred = get_height_profile(pred[0,...,L])
 x = np.linspace(0, len(height_profile_x_la) - 1, len(height_profile_x_la))
 y = np.linspace(0, len(height_profile_y_la) - 1, len(height_profile_y_la))
 
-ax1.plot(x, height_profile_x_la, label='mean_intensity', color='red')
-ax1.plot(x, height_profile_x_true, label='true', color='green')
-ax1.plot(x, height_profile_x_pred, label='pred', color='blue')
+ax1.plot(x, height_profile_x_la, label='gfm', color='red')
+ax1.plot(x, height_profile_x_true, label='ground truth', color='green')
+ax1.plot(x, height_profile_x_pred, label='prediction', color='blue')
 ax1.set(xlabel='pixels', ylabel='height')
 ax1.legend()
 ax1.set_title('profile in x-direction')
 
-ax2.plot(y, height_profile_y_la, label='mean_intensity', color='red')
-ax2.plot(y, height_profile_y_true, label='true', color='green')
-ax2.plot(y, height_profile_y_pred, label='pred', color='blue')
+ax2.plot(y, height_profile_y_la, label='gfm', color='red')
+ax2.plot(y, height_profile_y_true, label='ground truth', color='green')
+ax2.plot(y, height_profile_y_pred, label='prediction', color='blue')
 ax2.set(xlabel='pixels', ylabel='height')
 ax2.legend()
 ax2.set_title('profile in y-direction')
@@ -75,7 +75,7 @@ rax = plt.axes([0.01, 0.4, 0.06, 0.4], facecolor=axcolor) #[left, bottom, width,
 radio = RadioButtons(rax, ('0','1','2','3','4','5','6','7','8','9','10','11'))
 
 selected_lights = plt.axes([0.01, 0.01, 0.06, 0.3], facecolor=axcolor) #[left, bottom, width, height]
-SelectedLights = RadioButtons(selected_lights, ('all', 'bottom', 'middle', 'top', 'middle+top'))
+SelectedLights = RadioButtons(selected_lights, ('all levels', 'level 1', 'level 2', 'level 3', 'level 2+3'))
 
 axstart = plt.axes([0.55, 0.01, 0.3, 0.075])
 start = Button(axstart, '->Start Optimization<-', color='yellow')
@@ -118,14 +118,14 @@ def update(val):
 
     ax1.lines[2].remove()
 
-    ax1.plot(x, height_profile_x_pred, label='pred', color='blue')
+    ax1.plot(x, height_profile_x_pred, label='prediction', color='blue')
     ax1.set(xlabel='pixels', ylabel='height')
     ax1.legend()
     ax1.set_title('profile in x-direction')
 
     ax2.lines[2].remove()
 
-    ax2.plot(y, height_profile_y_pred, label='pred', color='blue')
+    ax2.plot(y, height_profile_y_pred, label='prediction', color='blue')
     ax2.set(xlabel='pixels', ylabel='height')
     ax2.legend()
     ax2.set_title('profile in y-direction')
@@ -147,9 +147,9 @@ def update_L(val):
     ax1.lines[1].remove()
     ax1.lines[0].remove()
 
-    ax1.plot(x, height_profile_x_la, label='mean_intensity', color='red')
-    ax1.plot(x, height_profile_x_true, label='true', color='green')
-    ax1.plot(x, height_profile_x_pred, label='pred', color='blue')
+    ax1.plot(x, height_profile_x_la, label='gfm', color='red')
+    ax1.plot(x, height_profile_x_true, label='ground truth', color='green')
+    ax1.plot(x, height_profile_x_pred, label='prediction', color='blue')
     ax1.set(xlabel='pixels', ylabel='height')
     ax1.legend()
     ax1.set_title('profile in x-direction')
@@ -158,9 +158,9 @@ def update_L(val):
     ax2.lines[1].remove()
     ax2.lines[0].remove()
 
-    ax2.plot(y, height_profile_y_la, label='mean_intensity', color='red')
-    ax2.plot(y, height_profile_y_true, label='true', color='green')
-    ax2.plot(y, height_profile_y_pred, label='pred', color='blue')
+    ax2.plot(y, height_profile_y_la, label='gfm', color='red')
+    ax2.plot(y, height_profile_y_true, label='ground truth', color='green')
+    ax2.plot(y, height_profile_y_pred, label='prediction', color='blue')
     ax2.set(xlabel='pixels', ylabel='height')
     ax2.legend()
     ax2.set_title('profile in y-direction')
