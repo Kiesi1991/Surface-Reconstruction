@@ -24,7 +24,7 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
     if not os.path.exists(os.path.join(path_results)):
         os.mkdir(os.path.join(path_results))
 
-    samples = get_real_samples(path_target)
+    samples = getRealSamples(path_target)
 
     if selected_lights=='bottom':
         start , end = 8, 11

@@ -189,10 +189,11 @@ def createNextFolder(path):
             folder += 1
     return path
 
-def get_real_samples(path):
-    '''file_path = os.path.join(path, '**', f'*.jpg')
-    paths = glob.glob(file_path, recursive=True)
-    numbers = [x[-6:-4] for x in paths]'''
+def getRealSamples(path):
+    '''
+    :param path: (string), directory path to real cabin cap samples, path to a folder with "S" subfolders.
+    :return: (S, 1, H, W, L), pytorch tensor - data from cabin cap image samples.
+    '''
 
     folders = glob.glob(os.path.join(path, '*'), recursive=True)
 
