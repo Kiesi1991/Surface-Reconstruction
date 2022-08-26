@@ -153,7 +153,11 @@ def scan(path_real_samples):
     return images
 
 def getGfm(path_real_samples='Sensor_2'):
-
+    '''
+    calculates gaussian filtered median (gfm) for samples in a folder
+    :param path_real_samples: (string), directory, which should be scanned
+    :return: (1, 1, H, W, L, 1), gaussian filtered median (gfm)
+    '''
     images = scan(path_real_samples)
 
     gfm = None
