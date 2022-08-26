@@ -128,6 +128,11 @@ def normalize(vector):
     return vector/Norms
 
 def scan(path_real_samples):
+    '''
+    scan folder with subfolders of real samples and create a dictionary
+    :param path_real_samples: (string), directory, which should be scanned
+    :return: (dictionary), keys: light source from 0 to 11, values: pytorch tensor (H, W, S), S = amount of cap-samples
+    '''
     convert_tensor = transforms.ToTensor()
 
     file_path = os.path.join(path_real_samples, '**', f'*.jpg')
