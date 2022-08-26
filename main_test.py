@@ -11,7 +11,7 @@ path_results = os.path.join('results', 'test-optimization', '0')
 its = 10000
 para_lights = True
 synthetic = False
-mean_intensity = get_light_attenuation()
+mean_intensity = getGfm()
 
 parameters = optimizeParameters(path_target='realSamples1', path_results=path_results, para_lights=para_lights,
                                     iterations=its, intensity=intensity, weight_decay=0.0, mean_intensity=mean_intensity,

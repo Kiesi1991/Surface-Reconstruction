@@ -73,42 +73,45 @@ def random_walk(size, p, p_var):
 
 
 
-def getNormals(surface, x=4, y=2):
-
-    hx = x / surface.shape[2]
-    hy = y / surface.shape[1]
-
-    dfdx = (surface[..., 1:] - surface[..., :-1]) / hx
-    dfdx1 = ((surface[..., -1] - surface[..., -2]) / hx).unsqueeze(2)
+def getNormals(surface, pd=0.0031):
+    '''
+    calculates normal vectors given a surface matrix.
+    :param surface: (B, H, W), surface matrix in pixel-to-height representation, every entry contains a height value in z-direction
+    :param pd: (float), distance between pixels
+    :return: (B, 1, H, W, 3), normalized normal vectors for every pixel
+    '''
+    dfdx = (surface[..., 1:] - surface[..., :-1]) / pd
+    dfdx1 = ((surface[..., -1] - surface[..., -2]) / pd).unsqueeze(2)
     dfdx = torch.cat((dfdx, dfdx1), dim=2).unsqueeze(3)
 
-    dfdy = ((surface[:, 1:, ...] - surface[:, :-1, ...]) / hy)
-    dfdy1 = ((surface[:, -1, ...] - surface[:, -2, ...]) / hy).unsqueeze(1)
+    dfdy = ((surface[:, 1:, ...] - surface[:, :-1, ...]) / pd)
+    dfdy1 = ((surface[:, -1, ...] - surface[:, -2, ...]) / pd).unsqueeze(1)
     dfdy = torch.cat((dfdy, dfdy1), dim=1).unsqueeze(3)
 
     z = torch.ones_like(dfdx)
-
     normals = torch.cat((-dfdx, -dfdy, z), dim=3)
-
     return normalize(normals.unsqueeze(1))
 
-def getVectors(surface, targetLocation, x, y, norm=True):
-
+def getVectors(surface, targetLocation, pd=0.0031, norm=True):
+    '''
+    calculates vectors between target positions and pixel positions.
+    :param surface: (B, H, W), surface matrix in pixel-to-height representation, every entry contains a height value in z-direction
+    :param targetLocation: (1, 1 or L, 1, 1, 3), target position for calculating vectors e.g. light positions, camera position
+    :param pd: (float), distance between pixels
+    :param norm: (boolean), if TRUE output is normalized
+    :return: (normalized) vector between pixel positions and target position(s)
+    '''
     device = surface.device
-
     b, h, w = surface.shape
-    dx = x/w
-    dy = y/h
 
-    X = torch.linspace(-(w // 2), (w // 2), steps=w).unsqueeze(0).to(device) * dx
-    Y = torch.linspace(-(h // 2), (h // 2), steps=h).unsqueeze(1).to(device) * dy
+    X = torch.linspace(-(w // 2), (w // 2), steps=w).unsqueeze(0).to(device) * pd
+    Y = torch.linspace(-(h // 2), (h // 2), steps=h).unsqueeze(1).to(device) * pd
 
     X = X.repeat(h, 1).unsqueeze(0).repeat(b, 1, 1).unsqueeze(-1).to(device)
     Y = Y.repeat(1, w).unsqueeze(0).repeat(b, 1, 1).unsqueeze(-1).to(device)
     Z = surface.unsqueeze(3)
 
     surfacePoints = torch.cat((X, Y, Z), dim=3).unsqueeze(1)
-
     V = targetLocation - surfacePoints
     if norm:
         return normalize(V)
@@ -116,16 +119,21 @@ def getVectors(surface, targetLocation, x, y, norm=True):
         return V
 
 def normalize(vector):
+    '''
+    normalize a vector at dimension -1
+    :param vector: (..., 3) pytorch tensor, which should be normalized
+    :return: (..., 3) normalized vector
+    '''
     Norms = torch.linalg.norm(vector, axis=-1, keepdims=True)
     return vector/Norms
 
-def get_light_attenuation():
+def scan(path_real_samples):
     convert_tensor = transforms.ToTensor()
 
-    file_path = os.path.join('Sensor_2', '**', f'*.jpg')
+    file_path = os.path.join(path_real_samples, '**', f'*.jpg')
     paths = glob.glob(file_path, recursive=True)
 
-    images={}
+    images = {}
     for idx, path in enumerate(paths):
         number = path[-6:-4]
         if number[0] == '/':
@@ -137,20 +145,22 @@ def get_light_attenuation():
             images[number] = im
         else:
             images[number] = torch.cat((images[number], im), dim=-1)
+    return images
 
+def getGfm(path_real_samples='Sensor_2'):
 
+    images = scan(path_real_samples)
 
-    light_attenuation = None
+    gfm = None
     for im_nr in sorted(images.keys()) :
         im = torch.from_numpy(gaussian_filter(torch.median(images[im_nr], dim=2)[0], sigma=10, mode='reflect'))
-        #images[im_nr] = im / im.max()
         images[im_nr] = im
-        if light_attenuation == None:
-            light_attenuation = images[im_nr].unsqueeze(-1)
+        if gfm == None:
+            gfm = images[im_nr].unsqueeze(-1)
         else:
-            light_attenuation = torch.cat((light_attenuation, images[im_nr].unsqueeze(-1)), dim=-1)
+            gfm = torch.cat((gfm, images[im_nr].unsqueeze(-1)), dim=-1)
 
-    return light_attenuation.unsqueeze(0).unsqueeze(0).unsqueeze(-1) # S,C,H,W,L,1
+    return gfm.unsqueeze(0).unsqueeze(0).unsqueeze(-1) # S,C,H,W,L,1
 
 def create_next_folder(path):
     folder = 0

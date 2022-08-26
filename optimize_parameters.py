@@ -201,7 +201,7 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
                     plt.savefig(os.path.join(path, f'height-profile.png'))
                     plt.close()
 
-                    normal_vectors = getNormals(model.mesh.detach(), x=model.x.detach(), y=model.y.detach())
+                    normal_vectors = getNormals(model.mesh.detach())
                     z_vector = torch.tensor([0.,0.,1.]).to(device).unsqueeze(0).unsqueeze(0).unsqueeze(0).unsqueeze(0)
 
                     angles = torch.acos((z_vector * normal_vectors).sum(dim=-1, keepdim=True)) * 90 / (torch.pi/2)

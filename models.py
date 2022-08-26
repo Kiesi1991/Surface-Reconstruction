@@ -4,7 +4,7 @@ import torch
 import torchvision
 import torch.nn.functional as F
 from filament_renderer import filament_renderer
-from utils import get_light_attenuation, get_scene_parameters
+from utils import *
 import os
 
 ###############################################

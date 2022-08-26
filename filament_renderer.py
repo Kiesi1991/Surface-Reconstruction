@@ -7,16 +7,16 @@ from utils import *
 
 def filament_renderer(surface, camera, lights, rough=torch.tensor(0.5), diffuse=torch.tensor(0.5), reflectance=torch.tensor(0.5), light_intensity=torch.ones((1, 1, 1, 1, 1, 1)), light_color=torch.ones((1, 1, 1, 1, 1, 1)), x=1.6083, y=1.20288, mean_intensity=None):
     lights = lights.unsqueeze(1).unsqueeze(1).unsqueeze(0)
-    light_dir = getVectors(surface, lights, x, y, norm=False).permute(0,2,3,1,4).unsqueeze(1)#B,1,H,W,L,3
+    light_dir = getVectors(surface, lights, norm=False).permute(0,2,3,1,4).unsqueeze(1)#B,1,H,W,L,3
     light_dir = tfunc.normalize(light_dir, dim=-1)
 
     roughness = (torch.ones((1, 1, 1, 1, 1, 1)).to(surface.device) * rough).to(surface.device)
     perceptual_roughness = roughness ** 0.5
     f0 = 0.16 * torch.clamp(reflectance, min=0., max=1.) ** 2
 
-    N = getNormals(surface, x=x, y=y)[:, :, :, :, None, :]  # 1,1,H,W,1,3
-    V = getVectors(surface, camera, x=x, y=y).permute(0, 2, 3, 1, 4).unsqueeze(1)  # 1,1,H,W,1,3
-    L_ = getVectors(surface, lights, x=x, y=y, norm=False).permute(0, 2, 3, 1, 4).unsqueeze(1) # 1,1,H,W,L,3
+    N = getNormals(surface)[:, :, :, :, None, :]  # 1,1,H,W,1,3
+    V = getVectors(surface, camera).permute(0, 2, 3, 1, 4).unsqueeze(1)  # 1,1,H,W,1,3
+    L_ = getVectors(surface, lights, norm=False).permute(0, 2, 3, 1, 4).unsqueeze(1) # 1,1,H,W,L,3
 
     light_attenuation = 1/(torch.linalg.norm(L_, axis=-1, keepdims=True)**2)
     L = normalize(L_)
