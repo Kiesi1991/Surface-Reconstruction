@@ -37,7 +37,7 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
     else:
         start, end = 0, 11
 
-    camera, lights, mesh = get_scene_locations(batch_real_samples=1) if synthetic else get_scene_locations(batch_real_samples=samples.shape[0])
+    camera, lights, mesh = getSceneLocations(batch=1) if synthetic else getSceneLocations(batch=samples.shape[0])
     path = path_results if quick_search else createNextFolder(path_results)
 
     if synthetic:

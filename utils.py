@@ -227,15 +227,20 @@ def getRealSamples(path):
             real_samples = torch.cat((real_samples, samples.unsqueeze(0)), dim=0)
     return real_samples.unsqueeze(1)
 
-def get_scene_locations(batch_real_samples):
-    resolution = (batch_real_samples, 386, 516)
-
+def getSceneLocations(batch=1, H=386, W=516):
+    '''
+    returns a scene for a Freesurf sensor with a flat (zero height) surface matrix.
+    :param batch: (int), batchsize - B flat surfaces will be created
+    :return: (tuple) -> (cam, lights, surface),
+    cam: (1, 1, 1, 1, 3), camera position in 3D space
+    lights: (L,3), light positions in 3D space
+    surface: (B, H, W), pytorch tensor with zeros as values -> flat surface
+    '''
+    resolution = (batch, H, W)
     cameraDistance = 8.0679
     camera = torch.tensor([[[[[0, 0, cameraDistance]]]]])
-
     h1, h2, h3 = 0.79, 3.55, 6.72178
     r1, r2, r3 = 2.975, 2.904641, 2.376113861
-
     locationLights = [[0.0, -r3, h3], [r3, 0.0, h3],
                       [0.0, r3, h3], [-r3, 0.0, h3],
                       [0.0, -r2, h2], [r2, 0.0, h2],
