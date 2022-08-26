@@ -171,7 +171,12 @@ def getGfm(path_real_samples='Sensor_2'):
 
     return gfm.unsqueeze(0).unsqueeze(0).unsqueeze(-1) # S,C,H,W,L,1
 
-def create_next_folder(path):
+def createNextFolder(path):
+    '''
+    scans a given directory path and creates the next available folder. If "i" is already created, the function creates a folder named "i+1". "i" starts at 0 and increases by 1.
+    :param path: (string), directory path to a folder
+    :return: path + "i+1"
+    '''
     folder = 0
     while True:
         if not os.path.exists(os.path.join(path)):

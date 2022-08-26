@@ -38,7 +38,7 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
         start, end = 0, 11
 
     camera, lights, mesh = get_scene_locations(batch_real_samples=1) if synthetic else get_scene_locations(batch_real_samples=samples.shape[0])
-    path = path_results if quick_search else create_next_folder(path_results)
+    path = path_results if quick_search else createNextFolder(path_results)
 
     if synthetic:
         light_intensity = torch.ones((1,1,1,1,12,1))
