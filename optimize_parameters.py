@@ -16,26 +16,13 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
 
     plot_every = iterations//8
 
-    if torch.cuda.is_available():
-        device = 'cuda'
-    else:
-        device = 'cpu'
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     if not os.path.exists(os.path.join(path_results)):
         os.mkdir(os.path.join(path_results))
 
     samples = getRealSamples(path_target)
-
-    if selected_lights=='bottom':
-        start , end = 8, 11
-    elif selected_lights=='middle':
-        start, end = 4, 7
-    elif selected_lights=='top':
-        start, end = 0, 3
-    elif selected_lights=='middle+top':
-        start, end = 0, 7
-    else:
-        start, end = 0, 11
+    start, end = getLightNumeration(selected_lights)
 
     camera, lights, mesh = getSceneLocations(batch=1) if synthetic else getSceneLocations(batch=samples.shape[0])
     path = path_results if quick_search else createNextFolder(path_results)

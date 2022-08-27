@@ -191,13 +191,29 @@ def getHeightProfile(surface):
     Profile in x-direction corresponds to the middle row of the surface matrix and the profile in y-direction is the middle column.
     :param surface: (B, H, W), surface matrix in pixel-to-height representation, every entry contains a height value in z-direction
     :return: (tuple) -> (height_profile_x, height_profile_y)
-    height_profile_x: ()
+    height_profile_x: (W,), middle row numpy array of surface matrix
+    height_profile_y: (H,), middle column numpy array of surface matrix
     '''
     B,H,W = surface.shape
     height_profile_x = surface.cpu().detach().numpy()[0, H//2, :]
     height_profile_y = surface.cpu().detach().numpy()[0, :, W//2]
-
     return height_profile_x, height_profile_y
+
+def getLightNumeration(level):
+    '''
+    :param level: (string), levels of light sources
+    :return: (tuple) -> (start:int, end:int), values between "start" and "end" are selected light sources.
+    '''
+    if level=='level 1':
+        return 8, 11
+    elif level=='level 2':
+        return 4, 7
+    elif level=='level 3':
+        return 0, 3
+    elif level=='level 2+3':
+        return 0, 7
+    else:
+        return 0, 11
 
 def get_scene_parameters(path):
     surface = torch.load(os.path.join(path, 'surface.pt'))
