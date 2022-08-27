@@ -6,72 +6,6 @@ import glob
 import imageio
 from PIL import Image
 from torchvision import transforms
-from datetime import datetime
-
-def createSurface(resolution):
-    surface = np.zeros(resolution)
-
-    p = 0.02
-    h = 0.01
-
-    sigmas = [2.5,5,10,15]
-
-    for sigma in sigmas:
-        x_var = np.random.normal(0, sigma*0.2, 1)[0]
-        y_var = np.random.normal(0, sigma*0.2, 1)[0]
-        p_var = np.clip(np.random.normal(0, p * 0.8, 1)[0], 0.00001, 0.05)
-        surface1 = np.zeros_like(surface)
-        for _ in range(3):
-            surface1 += random_walk(size=resolution, p=p, p_var=p_var)
-        surface1 = np.clip(surface1, 0.0, 1.0)
-        #surface1 = np.random.choice(np.array([1.0, 0.0]), size=resolution, p=[(p+p_var), 1.0 - (p+p_var)])
-        surface1 = gaussian_filter(surface1, sigma=sigma+x_var+y_var, mode='reflect')
-        surface1 /= surface1.max()
-        surface1 *= (sigma+(x_var+y_var))
-        surface += surface1
-
-    surface -= surface.min()
-    surface /= surface.max()
-    h_var = np.random.normal(0, h*0.2, 1)[0]
-    surface *= (h+h_var)
-    o_var = np.random.normal(0, h*0.1, 1)[0]
-    surface -= ((surface.max() / 2.0)+o_var)
-
-    return torch.from_numpy(surface) - torch.mean(torch.from_numpy(surface))
-
-    '''for sigma, p in para:
-        surface1 = np.random.choice(np.array([1.0, 0.0]), size=resolution, p=[p, 1.0-p])
-        #var = np.random.normal(0, sigma//10, 1)[0]
-        surface1 = gaussian_filter(surface1, sigma=sigma, mode='reflect')
-        surface += (surface1 / surface1.max())# * ((sigma)/5)
-    #var2 = np.random.normal(0, 0.005, 1)[0]
-    surface = surface - surface.min()
-    surface = (surface / surface.max()) * (0.1)
-    return torch.from_numpy(surface)'''
-
-def random_walk(size, p, p_var):
-    length = np.random.randint(100, size=1)[0] + 1
-    mask = np.random.choice(np.array([1.0, 0.0]), size=size, p=[(p+p_var), 1.0 - (p+p_var)])
-    actions = np.random.randint(4, size=length)+1 # actions: 1=right, 2=left, 3=up, 4=down
-    h,w = size
-    surface = np.zeros((h+length*2,w+length*2))
-    surface[length:-length,length:-length] = mask
-    x = 0
-    y = 0
-    for action in actions:
-        if action == 1:
-            x += 1
-        if action == 2:
-            x -= 1
-        if action == 3:
-            y -= 1
-        if action == 4:
-            y += 1
-        surface[length+y:(h+length+y),length+x:(w+length+x)] += mask #kumlative summer, scatter, conv
-
-    return np.clip(surface[length:-length,length:-length], 0.0, 1.0)
-
-
 
 def getNormals(surface, pd=0.0031):
     '''
@@ -194,7 +128,6 @@ def getRealSamples(path):
     :param path: (string), directory path to real cabin cap samples, path to a folder with "S" subfolders.
     :return: (S, 1, H, W, L), pytorch tensor - data from cabin cap image samples.
     '''
-
     folders = glob.glob(os.path.join(path, '*'), recursive=True)
 
     real_samples = None
@@ -209,7 +142,6 @@ def getRealSamples(path):
             images[int(number)] = paths[idx]
 
         convert_tensor = transforms.ToTensor()
-
         samples = None
         for image in images:
             try:
@@ -253,11 +185,24 @@ def getSceneLocations(batch=1, H=386, W=516):
 
     return camera, lights, surface
 
+def getHeightProfile(surface):
+    '''
+    returns a height profile in x- and y-direction, given a surface matrix. If more than one samples (batches) available, the first sample is chosen.
+    Profile in x-direction corresponds to the middle row of the surface matrix and the profile in y-direction is the middle column.
+    :param surface: (B, H, W), surface matrix in pixel-to-height representation, every entry contains a height value in z-direction
+    :return: (tuple) -> (height_profile_x, height_profile_y)
+    height_profile_x: ()
+    '''
+    B,H,W = surface.shape
+    height_profile_x = surface.cpu().detach().numpy()[0, H//2, :]
+    height_profile_y = surface.cpu().detach().numpy()[0, :, W//2]
+
+    return height_profile_x, height_profile_y
+
 def get_scene_parameters(path):
     surface = torch.load(os.path.join(path, 'surface.pt'))
     lights = torch.load(os.path.join(path, 'lights.pt'))
     camera = torch.load(os.path.join(path, 'camera.pt'))
-
     rough = torch.load(os.path.join(path, 'rough.pt'))
     diffuse = torch.load(os.path.join(path, 'diffuse.pt'))
     reflectance = torch.load(os.path.join(path, 'reflectance.pt'))
@@ -265,33 +210,60 @@ def get_scene_parameters(path):
     intensity = torch.load(os.path.join(path, 'intensity.pt'))
     shadow = torch.load(os.path.join(path, 'shadow.pt'))
 
-    x = torch.load(os.path.join(path, 'x.pt'))
-    y = torch.load(os.path.join(path, 'y.pt'))
-
     return {'surface':surface, 'lights':lights, 'camera':camera,
             'rough':rough, 'diffuse':diffuse, 'reflectance':reflectance,
             'light_intensity':light_intensity, 'intensity':intensity,
-            'shadow': shadow,
-            'x':x, 'y':y}
+            'shadow': shadow}
 
-class TimeDelta():
-    def __init__(self):
-        super().__init__()
-        self.time = None
-    def event(self):
-        eventtime = datetime.now()
-        if self.time != None:
-            timedelta = eventtime - self.time
-        else:
-            timedelta = 0
-        self.time = eventtime
-        return timedelta
+def createSurface(resolution):
+    surface = np.zeros(resolution)
 
+    p = 0.02
+    h = 0.01
 
-def get_height_profile(surface):
+    sigmas = [2.5,5,10,15]
 
-    B,H,W = surface.shape
-    height_profile_x = surface.cpu().detach().numpy()[0, H//2, :]
-    height_profile_y = surface.cpu().detach().numpy()[0, :, W//2]
+    for sigma in sigmas:
+        x_var = np.random.normal(0, sigma*0.2, 1)[0]
+        y_var = np.random.normal(0, sigma*0.2, 1)[0]
+        p_var = np.clip(np.random.normal(0, p * 0.8, 1)[0], 0.00001, 0.05)
+        surface1 = np.zeros_like(surface)
+        for _ in range(3):
+            surface1 += random_walk(size=resolution, p=p, p_var=p_var)
+        surface1 = np.clip(surface1, 0.0, 1.0)
+        #surface1 = np.random.choice(np.array([1.0, 0.0]), size=resolution, p=[(p+p_var), 1.0 - (p+p_var)])
+        surface1 = gaussian_filter(surface1, sigma=sigma+x_var+y_var, mode='reflect')
+        surface1 /= surface1.max()
+        surface1 *= (sigma+(x_var+y_var))
+        surface += surface1
 
-    return height_profile_x, height_profile_y
+    surface -= surface.min()
+    surface /= surface.max()
+    h_var = np.random.normal(0, h*0.2, 1)[0]
+    surface *= (h+h_var)
+    o_var = np.random.normal(0, h*0.1, 1)[0]
+    surface -= ((surface.max() / 2.0)+o_var)
+
+    return torch.from_numpy(surface) - torch.mean(torch.from_numpy(surface))
+
+def random_walk(size, p, p_var):
+    length = np.random.randint(100, size=1)[0] + 1
+    mask = np.random.choice(np.array([1.0, 0.0]), size=size, p=[(p+p_var), 1.0 - (p+p_var)])
+    actions = np.random.randint(4, size=length)+1 # actions: 1=right, 2=left, 3=up, 4=down
+    h,w = size
+    surface = np.zeros((h+length*2,w+length*2))
+    surface[length:-length,length:-length] = mask
+    x = 0
+    y = 0
+    for action in actions:
+        if action == 1:
+            x += 1
+        if action == 2:
+            x -= 1
+        if action == 3:
+            y -= 1
+        if action == 4:
+            y += 1
+        surface[length+y:(h+length+y),length+x:(w+length+x)] += mask #kumlative summer, scatter, conv
+
+    return np.clip(surface[length:-length,length:-length], 0.0, 1.0)

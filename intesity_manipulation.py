@@ -14,11 +14,11 @@ if torch.cuda.is_available():
 else:
     device = 'cpu'
 
-camera, lights, mesh = get_scene_locations(batch_real_samples=1)
+camera, lights, mesh = getSceneLocations(batch=1)
 
-samples = get_real_samples('realSamples1')
+samples = getRealSamples('realSamples1')
 
-mean_intensity = get_light_attenuation()
+mean_intensity = getGfm()
 #light_attenuation = torch.ones_like(light_attenuation)
 L= 0
 
@@ -40,9 +40,9 @@ plt.rcParams["figure.autolayout"] = False
 fig, (ax1, ax2) = plt.subplots(1,2)
 plt.subplots_adjust(bottom=0.4)
 
-height_profile_x_la, height_profile_y_la = get_height_profile(mean_intensity[0,...,L,0])
-height_profile_x_true, height_profile_y_true = get_height_profile(samples[0,...,L])
-height_profile_x_pred, height_profile_y_pred = get_height_profile(pred[0,...,L])
+height_profile_x_la, height_profile_y_la = getHeightProfile(mean_intensity[0,...,L,0])
+height_profile_x_true, height_profile_y_true = getHeightProfile(samples[0,...,L])
+height_profile_x_pred, height_profile_y_pred = getHeightProfile(pred[0,...,L])
 
 x = np.linspace(0, len(height_profile_x_la) - 1, len(height_profile_x_la))
 y = np.linspace(0, len(height_profile_y_la) - 1, len(height_profile_y_la))
@@ -111,7 +111,7 @@ def update(val):
     model.intensity = torch.tensor(intensity)
     pred = model.forward()
 
-    height_profile_x_pred, height_profile_y_pred = get_height_profile(pred[0, ..., int(radio.value_selected)])
+    height_profile_x_pred, height_profile_y_pred = getHeightProfile(pred[0, ..., int(radio.value_selected)])
 
     x = np.linspace(0, len(height_profile_x_la) - 1, len(height_profile_x_la))
     y = np.linspace(0, len(height_profile_y_la) - 1, len(height_profile_y_la))
@@ -136,9 +136,9 @@ def update_L(val):
     L = int(val)
     pred = model.forward()
 
-    height_profile_x_la, height_profile_y_la = get_height_profile(mean_intensity[0, ..., L, 0])
-    height_profile_x_true, height_profile_y_true = get_height_profile(samples[0, ..., L])
-    height_profile_x_pred, height_profile_y_pred = get_height_profile(pred[0, ..., L])
+    height_profile_x_la, height_profile_y_la = getHeightProfile(mean_intensity[0, ..., L, 0])
+    height_profile_x_true, height_profile_y_true = getHeightProfile(samples[0, ..., L])
+    height_profile_x_pred, height_profile_y_pred = getHeightProfile(pred[0, ..., L])
 
     x = np.linspace(0, len(height_profile_x_la) - 1, len(height_profile_x_la))
     y = np.linspace(0, len(height_profile_y_la) - 1, len(height_profile_y_la))

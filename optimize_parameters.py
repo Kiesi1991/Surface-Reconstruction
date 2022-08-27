@@ -171,8 +171,8 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
                     plt.close()
 
                     if synthetic:
-                        height_profile_x_gt, height_profile_y_gt = get_height_profile(surface)
-                    height_profile_x_pred, height_profile_y_pred = get_height_profile(model.mesh)
+                        height_profile_x_gt, height_profile_y_gt = getHeightProfile(surface)
+                    height_profile_x_pred, height_profile_y_pred = getHeightProfile(model.mesh)
 
                     x = np.linspace(0, len(height_profile_x_pred) - 1, len(height_profile_x_pred))
                     y = np.linspace(0, len(height_profile_y_pred) - 1, len(height_profile_y_pred))
