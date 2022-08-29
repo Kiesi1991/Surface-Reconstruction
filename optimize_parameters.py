@@ -88,20 +88,7 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
                 model.plotDiagrams(model, plot_every, path, synthetic,
                                    rough_origin=rough[0], reflectance_origin=reflectance[0], diffuse_origin=diffuse[0])
 
-                with open(os.path.join(path2, 'parameters.txt'), 'w') as f:
-                    f.write(f'Parameters {parameters}\n'
-                            f'Rough {model.rough.item()} Diffuse {model.diffuse.item()} Reflectance {model.reflectance.item()} \n'
-                            f'Camera {model.camera.detach()}\n'
-                            f'Lights {model.lights.detach()}\n'
-                            f'Surface Max {model.mesh.detach().max()}'
-                            f'Surface min {model.mesh.detach().min()}\n'
-                            f'Light Intensity {model.light_intensity.detach()}\n'
-                            f'Intensity {model.intensity.detach()}\n'
-                            f'AVG Err {statistics.mean(model.errs[-10:])}\n'
-                            f'Distance Err {distance_err * lam}\n'
-                            f'Difference lights {torch.linalg.norm(lights.cpu() - model.lights.cpu().detach(), axis=-1)}\n'
-                            f'Optimization with lights: {selected_lights}')
-
+                model.createParametersFile(path2, selected_lights)
 
                 torch.save(model.rough.detach().cpu(), os.path.join(path2, 'rough.pt'))
                 torch.save(model.diffuse.detach().cpu(), os.path.join(path2, 'diffuse.pt'))

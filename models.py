@@ -8,6 +8,7 @@ from utils import *
 import os
 import matplotlib.pyplot as plt
 import cv2
+import statistics
 
 ###############################################
 #                ZPrediction                  #
@@ -96,7 +97,7 @@ class OptimizeParameters(nn.Module):
 
 
         self.mesh = Parameter(surface[0].to(device)) if surface[1] else surface[0].to(device)
-        self.lights_origin = lights
+        self.lights_origin = lights[0]
         self.lights = Parameter(lights[0].to(device)) if lights[1]  else lights[0].to(device)
         self.camera = Parameter(camera[0].to(device)) if camera[1] else camera[0].to(device)
 
@@ -277,6 +278,25 @@ class OptimizeParameters(nn.Module):
 
         plt.savefig(os.path.join(path, f'material-parameters.png'))
         plt.close()
+
+    def createParametersFile(self, path, selected_lights='all levels'):
+        parameters = []
+        for name, param in self.named_parameters():
+            if param.requires_grad:
+                parameters.append(name)
+
+        with open(os.path.join(path, 'parameters.txt'), 'w') as f:
+            f.write(f'Parameters {parameters}\n'
+                    f'Rough {self.rough.item()} Diffuse {self.diffuse.item()} Reflectance {self.reflectance.item()} \n'
+                    f'Camera {self.camera.detach()}\n'
+                    f'Lights {self.lights.detach()}\n'
+                    f'Surface Max {self.mesh.detach().max()}'
+                    f'Surface min {self.mesh.detach().min()}\n'
+                    f'Light Intensity {self.light_intensity.detach()}\n'
+                    f'Intensity {self.intensity.detach()}\n'
+                    f'AVG Err {statistics.mean(self.errs[-10:])}\n'
+                    f'Difference lights {torch.linalg.norm(self.lights_origin.cpu() - self.lights.cpu().detach(), axis=-1)}\n'
+                    f'Optimization with lights: {selected_lights}')
 
 
 ###############################################
