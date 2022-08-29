@@ -83,36 +83,8 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
 
                 os.mkdir(os.path.join(path, f'iteration-{iteration}'))
                 path2 = os.path.join(path, f'iteration-{iteration}')
-                num_L = samples.shape[4]
-                for L in range(num_L):
-                    plt.figure(figsize=(20, 10))
-                    plt.subplot(1, 2, 1)
 
-                    plt.imshow(samples[0,0,...,L].cpu().detach().numpy())
-                    plt.clim(0, 1.0)
-
-                    plt.subplot(1, 2, 2)
-
-                    plt.imshow(pred[0,0,...,L].cpu().detach().numpy())
-                    plt.clim(0, 1.0)
-
-                    plt.savefig(os.path.join(path2, f'{L}.png'))
-                    plt.close()
-
-                    p = cv2.cvtColor(pred[0,0,...,L].cpu().detach().numpy(), cv2.COLOR_GRAY2RGB)
-                    t = cv2.cvtColor(samples[0,0,...,L].cpu().detach().numpy(), cv2.COLOR_GRAY2RGB)
-
-                    plt.figure(figsize=(20, 10))
-                    plt.subplot(1, 2, 1)
-                    plt.imshow(t)
-                    plt.clim(0, 1.0)
-
-                    plt.subplot(1, 2, 2)
-                    plt.imshow(p)
-                    plt.clim(0, 1.0)
-
-                    plt.savefig(os.path.join(path2, f'TrueRGB-{L}.png'))
-                    plt.close()
+                model.plotImageComparism(samples, pred, path2)
 
                 model.l_to_origin.append(torch.linalg.norm(lights.cpu().detach() - model.lights.cpu().detach(), axis=-1).tolist())
                 x = np.linspace(0, len(model.l_to_origin) - 1, len(model.l_to_origin)) * plot_every

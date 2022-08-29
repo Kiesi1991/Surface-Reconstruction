@@ -6,6 +6,8 @@ import torch.nn.functional as F
 from filament_renderer import filament_renderer
 from utils import *
 import os
+import matplotlib.pyplot as plt
+import cv2
 
 ###############################################
 #                ZPrediction                  #
@@ -142,6 +144,23 @@ class OptimizeParameters(nn.Module):
             return (color * self.shadow).squeeze(-1)
         else:
             return color.squeeze(-1)
+
+    def plotImageComparism(self, samples, pred, path):
+        for L in range(samples.shape[4]):
+            p = cv2.cvtColor(pred[0, 0, ..., L].cpu().detach().numpy(), cv2.COLOR_GRAY2RGB)
+            t = cv2.cvtColor(samples[0, 0, ..., L].cpu().detach().numpy(), cv2.COLOR_GRAY2RGB)
+
+            plt.figure(figsize=(20, 10))
+            plt.subplot(1, 2, 1)
+            plt.imshow(t)
+            plt.clim(0, 1.0)
+
+            plt.subplot(1, 2, 2)
+            plt.imshow(p)
+            plt.clim(0, 1.0)
+
+            plt.savefig(os.path.join(path, f'TrueRGB-{L}.png'))
+            plt.close()
 
 
 ###############################################
