@@ -89,16 +89,7 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
                                    rough_origin=rough[0], reflectance_origin=reflectance[0], diffuse_origin=diffuse[0])
 
                 model.createParametersFile(path2, selected_lights)
-
-                torch.save(model.rough.detach().cpu(), os.path.join(path2, 'rough.pt'))
-                torch.save(model.diffuse.detach().cpu(), os.path.join(path2, 'diffuse.pt'))
-                torch.save(model.reflectance.detach().cpu(), os.path.join(path2, 'reflectance.pt'))
-                torch.save(model.camera.detach().cpu(), os.path.join(path2, 'camera.pt'))
-                torch.save(model.lights.detach().cpu(), os.path.join(path2, 'lights.pt'))
-                torch.save(model.light_intensity.detach(), os.path.join(path2, 'light_intensity.pt'))
-                torch.save(model.intensity.detach(), os.path.join(path2, 'intensity.pt'))
-                torch.save(model.mesh.detach(), os.path.join(path2, 'surface.pt'))
-                torch.save(model.shadow.detach(), os.path.join(path2, 'shadow.pt'))
+                model.saveParameters(path2)
 
     return {'rough' : model.rough.detach().cpu(),
             'diffuse' : model.diffuse.detach().cpu(),

@@ -297,6 +297,17 @@ class OptimizeParameters(nn.Module):
                     f'AVG Err {statistics.mean(self.errs[-10:])}\n'
                     f'Difference lights {torch.linalg.norm(self.lights_origin.cpu() - self.lights.cpu().detach(), axis=-1)}\n'
                     f'Optimization with lights: {selected_lights}')
+    
+    def saveParameters(self, path):
+        torch.save(self.rough.detach().cpu(), os.path.join(path, 'rough.pt'))
+        torch.save(self.diffuse.detach().cpu(), os.path.join(path, 'diffuse.pt'))
+        torch.save(self.reflectance.detach().cpu(), os.path.join(path, 'reflectance.pt'))
+        torch.save(self.camera.detach().cpu(), os.path.join(path, 'camera.pt'))
+        torch.save(self.lights.detach().cpu(), os.path.join(path, 'lights.pt'))
+        torch.save(self.light_intensity.detach(), os.path.join(path, 'light_intensity.pt'))
+        torch.save(self.intensity.detach(), os.path.join(path, 'intensity.pt'))
+        torch.save(self.mesh.detach(), os.path.join(path, 'surface.pt'))
+        torch.save(self.shadow.detach(), os.path.join(path, 'shadow.pt'))
 
 
 ###############################################
