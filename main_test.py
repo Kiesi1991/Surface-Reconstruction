@@ -17,6 +17,6 @@ parameters = optimizeParameters(path_target='realSamples1', path_results=path_re
                                     iterations=its, intensity=intensity, weight_decay=0.0, mean_intensity=mean_intensity,
                                     # (synthetic, initial, parameter)
                                     rough=rough, diffuse=diffuse, reflectance=reflactance, selected_lights=selected_lights,
-                                    synthetic=synthetic, surface_opimization=True, quick_search=False)
+                                    synthetic=synthetic, surface_opimization=True)
 
 print('TheEnd')
