@@ -8,13 +8,14 @@ from shaders import FilamentShading
 
 def optimizeParameters(path_target='realSamples', path_results=os.path.join('results', 'optimization'),
                        lr=1e-4, weight_decay=0.,
-                       iterations=3001, mean_intensity=1.0,
+                       iterations=3001, gfm=None,
                        intensity=2.5, selected_lights='all', para_lights=True,
                        rough=(0.5,0.5,True), diffuse=(0.5,0.5,True), reflectance=(0.5,0.5,True),
                        synthetic=False, surface_opimization=True,
                        regularization_function='exp'):
 
     plot_every = iterations//8
+    lam = 0.000001
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -35,10 +36,9 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
         samples = shader.forward(surface).permute((0,2,3,1)).unsqueeze(0)
 
     model = OptimizeParameters((mesh,True) if surface_opimization else (surface,False),
-                               (lights,para_lights), (camera,False), device=device, mean_intensity=mean_intensity,
+                               (lights,para_lights), (camera,False), device=device, gfm=gfm,
                                rough=rough[1], diffuse=diffuse[1], reflectance=reflectance[1],
-                               par_r=rough[2], par_d=diffuse[2], par_ref=reflectance[2],
-                               get_para=False, intensity=intensity)
+                               par_r=rough[2], par_d=diffuse[2], par_ref=reflectance[2], intensity=intensity)
 
     model.lights.requires_grad = False
 
@@ -50,15 +50,6 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
     mse = torch.nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
 
-    errs = []
-    errors = []
-    roughs = []
-    diffuses = []
-    reflectances = []
-    intensities = []
-    l_to_origin = []
-    l_to_zero = []
-    lam = 0.000001
     active_lights = abs(end - start) + 1
 
     for iteration in tqdm(range(iterations)):
@@ -72,7 +63,7 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
                 raise(f'Regularisation function is not defined: {regularization_function}!')
 
             err = mse(pred[...,start:end+1].to(device), samples[...,start:end+1].to(device)) + lam * distance_err
-            errs.append(err.item())
+            model.errs.append(err.item())
             optimizer.zero_grad()
             err.backward()
             optimizer.step()
@@ -81,14 +72,14 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
                 model.lights.requires_grad = True
 
             if iteration % 50 == 0:
-                errors.append(statistics.mean(errs[-10:]))
+                model.errors.append(statistics.mean(model.errs[-10:]))
 
             if iteration % plot_every == 0:
 
-                roughs.append(model.rough.cpu().detach().numpy().item())
-                diffuses.append(model.diffuse.cpu().detach().numpy().item())
-                reflectances.append(model.reflectance.cpu().detach().numpy().item())
-                intensities.append(model.intensity.cpu().detach().numpy().item())
+                model.roughs.append(model.rough.cpu().detach().numpy().item())
+                model.diffuses.append(model.diffuse.cpu().detach().numpy().item())
+                model.reflectances.append(model.reflectance.cpu().detach().numpy().item())
+                model.intensities.append(model.intensity.cpu().detach().numpy().item())
 
                 os.mkdir(os.path.join(path, f'iteration-{iteration}'))
                 path2 = os.path.join(path, f'iteration-{iteration}')
@@ -123,11 +114,11 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
                     plt.savefig(os.path.join(path2, f'TrueRGB-{L}.png'))
                     plt.close()
 
-                l_to_origin.append(torch.linalg.norm(lights.cpu().detach() - model.lights.cpu().detach(), axis=-1).tolist())
-                x = np.linspace(0, len(l_to_origin) - 1, len(l_to_origin)) * plot_every
+                model.l_to_origin.append(torch.linalg.norm(lights.cpu().detach() - model.lights.cpu().detach(), axis=-1).tolist())
+                x = np.linspace(0, len(model.l_to_origin) - 1, len(model.l_to_origin)) * plot_every
 
                 for L in range(12):
-                    plt.plot(x, np.array(l_to_origin)[:,L], label=f'{L}')
+                    plt.plot(x, np.array(model.l_to_origin)[:,L], label=f'{L}')
 
                 plt.xlabel('iteration')
                 plt.ylabel('distance to origin')
@@ -135,11 +126,11 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
                 plt.savefig(os.path.join(path, 'l_to_origin.png'))
                 plt.close()
 
-                l_to_zero.append(torch.linalg.norm(model.lights.cpu().detach(), axis=-1).tolist())
-                x = np.linspace(0, len(l_to_zero) - 1, len(l_to_zero)) * plot_every
+                model.l_to_zero.append(torch.linalg.norm(model.lights.cpu().detach(), axis=-1).tolist())
+                x = np.linspace(0, len(model.l_to_zero) - 1, len(model.l_to_zero)) * plot_every
 
                 for L in range(12):
-                    plt.plot(x, np.array(l_to_zero)[:, L], label=f'{L}')
+                    plt.plot(x, np.array(model.l_to_zero)[:, L], label=f'{L}')
 
                 plt.xlabel('iteration')
                 plt.ylabel('distance to zero')
@@ -148,8 +139,8 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
                 plt.savefig(os.path.join(path, 'l_to_zero.png'))
                 plt.close()
 
-                x = np.linspace(0, len(errors) - 1, len(errors)) * plot_every
-                plt.plot(x, errors, label='errors')
+                x = np.linspace(0, len(model.errors) - 1, len(model.errors)) * plot_every
+                plt.plot(x, model.errors, label='errors')
                 plt.xlabel('iteration')
                 plt.ylabel('Error')
                 plt.legend()
@@ -207,9 +198,7 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
                             f'Surface min {model.mesh.detach().min()}\n'
                             f'Light Intensity {model.light_intensity.detach()}\n'
                             f'Intensity {model.intensity.detach()}\n'
-                            f'X {model.x.detach()}\n'
-                            f'Y {model.y.detach()}\n'
-                            f'AVG Err {statistics.mean(errs[-10:])}\n'
+                            f'AVG Err {statistics.mean(model.errs[-10:])}\n'
                             f'Distance Err {distance_err * lam}\n'
                             f'Difference lights {torch.linalg.norm(lights.cpu() - model.lights.cpu().detach(), axis=-1)}\n'
                             f'Optimization with lights: {selected_lights}')
@@ -223,25 +212,23 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
                 torch.save(model.light_intensity.detach(), os.path.join(path2, 'light_intensity.pt'))
                 torch.save(model.intensity.detach(), os.path.join(path2, 'intensity.pt'))
                 torch.save(model.mesh.detach(), os.path.join(path2, 'surface.pt'))
-                torch.save(model.x.detach(), os.path.join(path2, 'x.pt'))
-                torch.save(model.y.detach(), os.path.join(path2, 'y.pt'))
                 torch.save(model.shadow.detach(), os.path.join(path2, 'shadow.pt'))
 
                 if synthetic:
                     plt.figure(figsize=(20, 10))
                     plt.subplot(1, 2, 1)
 
-                x = np.linspace(0, len(roughs) - 1, len(roughs)) * plot_every
-                plt.plot(x, roughs, label='rough', color='red')
-                plt.plot(x, diffuses, label='diffuse', color='green')
-                plt.plot(x, reflectances, label='reflectance', color='blue')
+                x = np.linspace(0, len(model.roughs) - 1, len(model.roughs)) * plot_every
+                plt.plot(x, model.roughs, label='rough', color='red')
+                plt.plot(x, model.diffuses, label='diffuse', color='green')
+                plt.plot(x, model.reflectances, label='reflectance', color='blue')
 
                 plt.xlabel('iterations')
                 plt.ylabel('value')
                 if synthetic:
-                    plt.plot(x, [rough[0]] * len(roughs), color='red', linestyle='dashed')
-                    plt.plot(x, [diffuse[0]] * len(diffuses), color='green', linestyle='dashed')
-                    plt.plot(x, [reflectance[0]] * len(reflectances), color='blue', linestyle='dashed')
+                    plt.plot(x, [rough[0]] * len(model.roughs), color='red', linestyle='dashed')
+                    plt.plot(x, [diffuse[0]] * len(model.diffuses), color='green', linestyle='dashed')
+                    plt.plot(x, [reflectance[0]] * len(model.reflectances), color='blue', linestyle='dashed')
                     plt.title(f'parameters with constant intensity {model.intensity.cpu().detach().numpy().item()}\n'
                               f'Synthetic: (rough,diffuse,reflectance)={(rough[0], diffuse[0], reflectance[0])}; \n'
                               f'Initial value vor prediction: (rough,diffuse,reflectance)={(rough[1], diffuse[1], reflectance[1])}')

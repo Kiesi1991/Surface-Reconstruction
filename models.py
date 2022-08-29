@@ -43,7 +43,7 @@ class ResidualNetwork(nn.Module):
         self.begin = nn.Conv2d(12, 12, kernel_size=1)
         self.res_blocks = nn.ModuleList([ResBlock(12) for i in range(layers)])
         self.head = nn.Conv2d(12, 1, kernel_size=3, padding=3//2)
-
+    lam = 0.000001
     def forward(self, x):
         #ftrs = []
         x = self.begin(x)
@@ -84,139 +84,64 @@ class ResBlock(nn.Module):
 ###############################################
 
 class OptimizeParameters(nn.Module):
-    def __init__(self, surface, lights, camera, mean_intensity=1.0,
+    def __init__(self, surface, lights, camera, gfm,
                  shadowing=True, par_li=False,
                  par_r=True, par_d=True, par_ref=True,
-                 par_x=False, par_y=False,
-                 device='cpu', get_para=True,
+                 device='cpu',
                  intensity=1.,
                  rough=0.5, diffuse=0.5, reflectance=0.5):
         super().__init__()
-
-        if get_para:
-            parameters = get_scene_parameters(os.path.join('results', 'optimization', '2', 'Epoch-10000'))
-            surface = (parameters['surface'], True)
-            lights = (parameters['lights'], False)
-            camera = (parameters['camera'], False)
-            rough = parameters['rough'].item()
-            diffuse = parameters['diffuse'].item()
-            f0P = parameters['f0P'].item()
-            intensity = parameters['intensity'].item()
-            x = parameters['x'].item()
-            y = parameters['y'].item()
-        else:
-            #rough, diffuse, f0P = 0.1, 0.1, 0.9
-            x, y = 1.6083, 1.20288
 
 
         self.mesh = Parameter(surface[0].to(device)) if surface[1] else surface[0].to(device)
         self.lights = Parameter(lights[0].to(device)) if lights[1]  else lights[0].to(device)
         self.camera = Parameter(camera[0].to(device)) if camera[1] else camera[0].to(device)
 
-        light_intensity = (torch.tensor([[[[[[1.],
-                                             [1.],
-                                             [1.],
-                                             [1.],
-                                             [1.],
-                                             [1.],
-                                             [1.],
-                                             [1.],
-                                             [1.],
-                                             [1.],
-                                             [1.],
-                                             [1.]]]]]])).to(device)
+
+        light_intensity = torch.ones((1,1,1,1,12,1)).to(device)
         self.light_intensity = Parameter(light_intensity) if par_li else light_intensity
         self.light_color = torch.ones_like(self.light_intensity).to(device)
-        self.intensity = torch.tensor(intensity).to(device) #nn.parameter.Parameter(torch.tensor(intensity).to(device))
+        self.intensity = torch.tensor(intensity).to(device)
 
         self.rough = Parameter(torch.tensor(rough).to(device)) if par_r else torch.tensor(rough).to(device)
         self.diffuse = Parameter(torch.tensor(diffuse).to(device)) if par_d else torch.tensor(diffuse).to(device)
         self.reflectance = Parameter(torch.tensor(reflectance).to(device)) if par_ref else torch.tensor(reflectance).to(device)
 
-        #self.f0P = Parameter(torch.tensor(f0P).to(device)) if par_f0 else torch.tensor(f0P).to(device)
-
-        self.x = Parameter(torch.tensor(x).to(device)) if par_x else torch.tensor(x).to(device)
-        self.y = Parameter(torch.tensor(y).to(device)) if par_y else torch.tensor(y).to(device)
-
-        self.mean_intensity = mean_intensity.to(device)
+        self.gfm = gfm.to(device)
 
         self.device = device
 
         self.shadowing = shadowing
         self.shadow = None
 
-        '''if path is not None:
-            mesh = torch.load(os.path.join(path, 'surface.pt')).to(device)
-            camera = torch.load(os.path.join(path, 'camera.pt')).to(device)
-            lights = torch.load(os.path.join(path, 'lights.pt')).to(device)
-            light_intensity = torch.load(os.path.join(path, 'light_intensity.pt')).to(device)
-            rough = torch.load(os.path.join(path, 'rough.pt')).to(device)
-            diffuse = torch.load(os.path.join(path, 'diffuse.pt')).to(device)
-            f0P = torch.load(os.path.join(path, 'f0P.pt')).to(device)
-        else:
-            rough = nn.parameter.Parameter(torch.tensor(-0.5)).to(device)
-            diffuse = nn.parameter.Parameter(torch.tensor(2.0)).to(device)
-            f0P = nn.parameter.Parameter(torch.tensor(2.6)).to(device)
-            light_intensity = (torch.tensor([[[[[[1.],
-            [1.],
-            [1.],
-            [1.],
-            [1.],
-            [1.],
-            [1.],
-            [1.],
-            [1.],
-            [1.],
-            [1.],
-            [1.]]]]]])).to(device)
-
-
-        self.mesh = nn.parameter.Parameter(mesh.to(device))
-        self.lights = nn.parameter.Parameter(lights.to(device)) #nn.Parameter(lights)
-        self.camera = torch.tensor(8.0679).to(device)#nn.parameter.Parameter(camera)
-
-        #self.rough = nn.parameter.Parameter(torch.normal(mean=torch.tensor(0.5), std=torch.tensor(0.1)))
-        #self.rough = nn.parameter.Parameter(rough).to(device)
-        #self.diffuse = nn.parameter.Parameter(torch.normal(mean=torch.tensor(0.5), std=torch.tensor(0.1)))
-        self.diffuse = nn.parameter.Parameter(diffuse).to(device)
-        #self.f0P = nn.parameter.Parameter(torch.normal(mean=torch.tensor(0.5), std=torch.tensor(0.1)))
-        #self.f0P = nn.parameter.Parameter(f0P).to(device)
-
-        self.light_intensity = light_intensity
-        self.light_color = torch.ones_like(self.light_intensity).to(device)
-        self.x = torch.tensor(1.6083).to(device) #nn.parameter.Parameter(torch.tensor(1.29))
-        self.y = torch.tensor(1.20288).to(device) #nn.parameter.Parameter(torch.tensor(0.97))
-        self.la = get_light_attenuation().to(device)
-
-        self.intensity = nn.parameter.Parameter(torch.tensor(1.5).to(device))
-        self.ratio = nn.parameter.Parameter(torch.tensor(0.6).to(device))
-
-        self.device = device'''
-
+        # values for plotting
+        self.errs = []
+        self.errors = []
+        self.roughs = []
+        self.diffuses = []
+        self.reflectances = []
+        self.intensities = []
+        self.l_to_origin = []
+        self.l_to_zero = []
 
     def forward(self):
-        rough = torch.clamp(self.rough, min=0., max=1.) #torch.sigmoid(self.rough)
-        diffuse = torch.clamp(self.diffuse, min=0., max=1.) #torch.sigmoid(self.diffuse)
-
-        #f0P = torch.clamp(self.f0P, min=0., max=1.) #torch.sigmoid(self.f0P)
+        rough = torch.clamp(self.rough, min=0., max=1.)
+        diffuse = torch.clamp(self.diffuse, min=0., max=1.)
 
         light_intensity = self.light_intensity * self.intensity
 
         mesh = self.mesh - torch.mean(self.mesh)
 
-        color = filament_renderer(mesh, self.camera, self.lights, mean_intensity=self.mean_intensity,
-                                 rough=rough, diffuse=diffuse, light_intensity=light_intensity, light_color=self.light_color, reflectance=self.reflectance, x=self.x, y=self.y)
+        color = filament_renderer(mesh, self.camera, self.lights,
+                                 rough=rough, diffuse=diffuse, light_intensity=light_intensity, light_color=self.light_color, reflectance=self.reflectance)
 
         if self.shadowing and self.shadow is None:
-            self.shadow = (self.mean_intensity / color).detach()
-
-        #self.shadowing = (self.mean_intensity / color).detach()
+            self.shadow = (self.gfm / color).detach()
 
         if self.shadowing:
             return (color * self.shadow).squeeze(-1)
         else:
             return color.squeeze(-1)
-
 
 
 ###############################################

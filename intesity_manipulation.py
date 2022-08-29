@@ -189,7 +189,7 @@ def start_optimization(val):
                                     iterations=its, intensity=intensity, weight_decay=0.0, mean_intensity=mean_intensity,
                                     # (synthetic, initial, parameter)
                                     rough=rough, diffuse=diffuse, reflectance=reflactance, selected_lights=selected_lights,
-                                    synthetic=SynB.value, surface_opimization=True, quick_search=False)
+                                    synthetic=SynB.value, surface_opimization=True)
 
 
 def change_synthetic(val):

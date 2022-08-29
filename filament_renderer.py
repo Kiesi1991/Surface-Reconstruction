@@ -5,7 +5,7 @@ import torch.nn.functional as tfunc
 from utils import *
 
 
-def filament_renderer(surface, camera, lights, rough=torch.tensor(0.5), diffuse=torch.tensor(0.5), reflectance=torch.tensor(0.5), light_intensity=torch.ones((1, 1, 1, 1, 1, 1)), light_color=torch.ones((1, 1, 1, 1, 1, 1)), x=1.6083, y=1.20288, mean_intensity=None):
+def filament_renderer(surface, camera, lights, rough=torch.tensor(0.5), diffuse=torch.tensor(0.5), reflectance=torch.tensor(0.5), light_intensity=torch.ones((1, 1, 1, 1, 1, 1)), light_color=torch.ones((1, 1, 1, 1, 1, 1))):
     lights = lights.unsqueeze(1).unsqueeze(1).unsqueeze(0)
     light_dir = getVectors(surface, lights, norm=False).permute(0,2,3,1,4).unsqueeze(1)#B,1,H,W,L,3
     light_dir = tfunc.normalize(light_dir, dim=-1)
