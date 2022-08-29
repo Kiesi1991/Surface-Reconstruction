@@ -96,6 +96,7 @@ class OptimizeParameters(nn.Module):
 
 
         self.mesh = Parameter(surface[0].to(device)) if surface[1] else surface[0].to(device)
+        self.lights_origin = lights
         self.lights = Parameter(lights[0].to(device)) if lights[1]  else lights[0].to(device)
         self.camera = Parameter(camera[0].to(device)) if camera[1] else camera[0].to(device)
 
@@ -161,6 +162,121 @@ class OptimizeParameters(nn.Module):
 
             plt.savefig(os.path.join(path, f'TrueRGB-{L}.png'))
             plt.close()
+    def plotDiagrams(self, model, plot_every, path, synthetic,
+                     rough_origin=0, reflectance_origin=0, diffuse_origin=0):
+        model.l_to_origin.append(
+            torch.linalg.norm(self.lights_origin .cpu().detach() - model.lights.cpu().detach(), axis=-1).tolist())
+        model.l_to_zero.append(torch.linalg.norm(model.lights.cpu().detach(), axis=-1).tolist())
+
+        x = np.linspace(0, len(model.l_to_origin) - 1, len(model.l_to_origin)) * plot_every
+
+        for L in range(12):
+            plt.plot(x, np.array(model.l_to_origin)[:, L], label=f'{L}')
+
+        plt.xlabel('iteration')
+        plt.ylabel('distance to origin')
+        plt.legend()
+        plt.savefig(os.path.join(path, 'l_to_origin.png'))
+        plt.close()
+
+        x = np.linspace(0, len(model.l_to_zero) - 1, len(model.l_to_zero)) * plot_every
+
+        for L in range(12):
+            plt.plot(x, np.array(model.l_to_zero)[:, L], label=f'{L}')
+
+        plt.xlabel('iteration')
+        plt.ylabel('distance to zero')
+        plt.yscale('log')
+        plt.legend()
+        plt.savefig(os.path.join(path, 'l_to_zero.png'))
+        plt.close()
+
+        x = np.linspace(0, len(model.errors) - 1, len(model.errors)) * plot_every
+        plt.plot(x, model.errors, label='errors')
+        plt.xlabel('iteration')
+        plt.ylabel('Error')
+        plt.legend()
+        plt.savefig(os.path.join(path, f'error.png'))
+        plt.close()
+
+        if synthetic:
+            height_profile_x_gt, height_profile_y_gt = getHeightProfile(self.mesh)
+        height_profile_x_pred, height_profile_y_pred = getHeightProfile(model.mesh)
+
+        x = np.linspace(0, len(height_profile_x_pred) - 1, len(height_profile_x_pred))
+        y = np.linspace(0, len(height_profile_y_pred) - 1, len(height_profile_y_pred))
+
+        plt.figure(figsize=(20, 10))
+        plt.subplot(1, 2, 1)
+
+        if synthetic:
+            plt.plot(x, height_profile_x_gt, label='ground truth')
+        plt.plot(x, height_profile_x_pred, label='prediction')
+        plt.xlabel('pixels')
+        plt.ylabel('height')
+        plt.legend()
+        plt.title('profile in x-direction')
+
+        plt.subplot(1, 2, 2)
+
+        if synthetic:
+            plt.plot(y, height_profile_y_gt, label='ground truth')
+        plt.plot(y, height_profile_y_pred, label='prediction')
+        plt.xlabel('pixels')
+        plt.ylabel('height')
+        plt.legend()
+        plt.title('profile in y-direction')
+
+        plt.savefig(os.path.join(path, f'height-profile.png'))
+        plt.close()
+
+        normal_vectors = getNormals(model.mesh.detach())
+        z_vector = torch.tensor([0., 0., 1.]).to(self.device).unsqueeze(0).unsqueeze(0).unsqueeze(0).unsqueeze(0)
+
+        angles = torch.acos((z_vector * normal_vectors).sum(dim=-1, keepdim=True)) * 90 / (torch.pi / 2)
+
+        plt.imshow(angles[0, 0, ..., 0].cpu().detach().numpy())
+        plt.colorbar()
+        plt.savefig(os.path.join(path, f'angles.png'))
+        plt.close()
+
+        if synthetic:
+            plt.figure(figsize=(20, 10))
+            plt.subplot(1, 2, 1)
+
+        x = np.linspace(0, len(model.roughs) - 1, len(model.roughs)) * plot_every
+        plt.plot(x, model.roughs, label='rough', color='red')
+        plt.plot(x, model.diffuses, label='diffuse', color='green')
+        plt.plot(x, model.reflectances, label='reflectance', color='blue')
+
+        plt.xlabel('iterations')
+        plt.ylabel('value')
+        if synthetic:
+            plt.plot(x, [rough_origin] * len(model.roughs), color='red', linestyle='dashed')
+            plt.plot(x, [diffuse_origin] * len(model.diffuses), color='green', linestyle='dashed')
+            plt.plot(x, [reflectance_origin] * len(model.reflectances), color='blue', linestyle='dashed')
+            plt.title(f'parameters with constant intensity {model.intensity.cpu().detach().numpy().item()}\n'
+                      f'Synthetic: (rough,diffuse,reflectance)={(rough_origin, diffuse_origin, reflectance_origin)}; \n'
+                      f'Initial value vor prediction: (rough,diffuse,reflectance)={(rough_origin, diffuse_origin, reflectance_origin)}')
+        else:
+            plt.title(f'parameters with constant intensity {model.intensity.cpu().detach().numpy().item()}')
+        plt.legend()
+
+        if synthetic:
+            plt.subplot(1, 2, 2)
+
+            surface_line = self.mesh.cpu().detach().numpy()[0, 200, :]
+            pred_surface_line = model.mesh.cpu().detach().numpy()[0, 200, :]
+
+            x = np.linspace(0, len(surface_line) - 1, len(surface_line))
+            plt.plot(x, surface_line, label='ground truth')
+            plt.plot(x, pred_surface_line, label='prediction')
+            plt.xlabel('x')
+            plt.ylabel('height')
+            plt.legend()
+
+        plt.savefig(os.path.join(path, f'material-parameters.png'))
+        plt.close()
 
 
 ###############################################
