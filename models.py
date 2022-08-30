@@ -2,7 +2,6 @@ from torch import nn
 from torch.nn.parameter import Parameter
 import torchvision
 import torch.nn.functional as F
-from filament_renderer import filament_renderer
 from utils import *
 import os
 import matplotlib.pyplot as plt

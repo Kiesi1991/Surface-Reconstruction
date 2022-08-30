@@ -14,6 +14,7 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
+    #create results path directory
     if not os.path.exists(os.path.join(path_results)):
         os.mkdir(os.path.join(path_results))
 
@@ -34,8 +35,10 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
 
     active_lights = abs(end - start) + 1
 
+    # optimiziation loop with gradient steps and plotting intermediate results
     for iteration in tqdm(range(iterations)):
             pred = model.forward()
+            # apply regularisation to light positions
             distance = torch.linalg.norm(lights.to(device) - model.lights, axis=-1)
             if regularization_function == 'exp':
                 distance_err = torch.exp(torch.sum(distance, dim=-1))/active_lights
@@ -44,14 +47,19 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
             else:
                 raise(f'Regularisation function is not defined: {regularization_function}!')
 
+            # set requires_grad value for light positions to False for the first iteration till iteration is grater equal to plot_every
+            if iteration >= plot_every and para_lights:
+                model.lights.requires_grad = True
+            else:
+                model.lights.requires_grad = False
+            # calculate errors between real cabin-cap images and predictions from Filament renderer
             err = mse(pred[..., start:end+1].to(device), samples[..., start:end+1].to(device)) + lam * distance_err
             model.errs.append(err.item())
+            # set gradients to zero and apply optimization step
             optimizer.zero_grad()
             err.backward()
             optimizer.step()
 
-            if iteration == plot_every and para_lights:
-                model.lights.requires_grad = True
 
             if iteration % 50 == 0:
                 model.errors.append(statistics.mean(model.errs[-10:]))
