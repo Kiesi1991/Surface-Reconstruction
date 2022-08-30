@@ -107,7 +107,6 @@ class OptimizeParameters(nn.Module):
         self.camera = camera
         light_intensity = torch.ones((1,1,1,1,12,1))
         self.light_intensity = light_intensity
-        self.light_color = torch.ones_like(self.light_intensity)
         self.intensity = torch.tensor(intensity)
 
         # material parameters
@@ -140,15 +139,15 @@ class OptimizeParameters(nn.Module):
         device = self.surface.device
         light_intensity = self.light_intensity * self.intensity
         surface = self.surface - torch.mean(self.surface)
-        color = filament_renderer(surface, self.camera.to(device), self.lights,
+        output = filament_renderer(surface, self.camera.to(device), self.lights,
                                  rough=self.rough, diffuse=self.diffuse, reflectance=self.reflectance,
-                                 light_intensity=light_intensity, light_color=self.light_color)
+                                 light_intensity=light_intensity)
         if self.shadowing and self.shadow is None:
-            self.shadow = (self.gfm.to(device) / color).detach()
+            self.shadow = (self.gfm.to(device) / output).detach()
         if self.shadowing:
-            return (color * self.shadow).squeeze(-1)
+            return (output * self.shadow).squeeze(-1)
         else:
-            return color.squeeze(-1)
+            return output.squeeze(-1)
 
     def plotImageComparism(self, samples, pred, path):
         '''
