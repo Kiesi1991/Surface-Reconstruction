@@ -5,6 +5,7 @@ from models import OptimizeParameters
 from utils import *
 from optimize_parameters import optimizeParameters
 from matplotlib.widgets import TextBox
+from torch.nn.parameter import Parameter
 
 rough, diffuse, relectance = 0.295, 0.53, 0.842
 intensity = 70.39
@@ -14,21 +15,17 @@ if torch.cuda.is_available():
 else:
     device = 'cpu'
 
-camera, lights, mesh = getSceneLocations(batch=1)
+camera, lights, surface = getSceneLocations(batch=1)
 
 samples = getRealSamples('realSamples1')
 
-mean_intensity = getGfm()
-#light_attenuation = torch.ones_like(light_attenuation)
+gfm = getGfm()
 L= 0
 
 
 
-model = OptimizeParameters((mesh,True), (lights,False), (camera,False), shadowing=False,
-                               device=device, mean_intensity=mean_intensity,
-                               rough=rough, diffuse=diffuse, reflectance=relectance,
-                               par_r=False, par_d=False, par_ref=False,
-                               get_para=False, intensity=intensity)
+model = OptimizeParameters(surface, (lights,False), camera, shadowing=False,
+                               rough=rough, diffuse=diffuse, reflectance=relectance, intensity=intensity)
 model.eval()
 
 pred = model.forward()
@@ -40,7 +37,7 @@ plt.rcParams["figure.autolayout"] = False
 fig, (ax1, ax2) = plt.subplots(1,2)
 plt.subplots_adjust(bottom=0.4)
 
-height_profile_x_la, height_profile_y_la = getHeightProfile(mean_intensity[0,...,L,0])
+height_profile_x_la, height_profile_y_la = getHeightProfile(gfm[0,...,L,0])
 height_profile_x_true, height_profile_y_true = getHeightProfile(samples[0,...,L])
 height_profile_x_pred, height_profile_y_pred = getHeightProfile(pred[0,...,L])
 
@@ -101,14 +98,11 @@ PathResults = TextBox(res_path_box, "Folder results", textalignment="center")
 PathResults.set_val(path_results)
 
 def update(val):
-    rough = Rslider.val
-    reflectance = Fslider.val
-    diffuse = Dslider.val
-    intensity = Islider.val
-    model.rough = torch.tensor(rough)
-    model.reflectance = torch.tensor(reflectance)
-    model.diffuse = torch.tensor(diffuse)
-    model.intensity = torch.tensor(intensity)
+
+    model.rough = Parameter(torch.tensor(Rslider.val))
+    model.reflectance = Parameter(torch.tensor(Fslider.val))
+    model.diffuse = Parameter(torch.tensor(Dslider.val))
+    model.intensity = Parameter(torch.tensor(Islider.val))
     pred = model.forward()
 
     height_profile_x_pred, height_profile_y_pred = getHeightProfile(pred[0, ..., int(radio.value_selected)])
@@ -136,7 +130,7 @@ def update_L(val):
     L = int(val)
     pred = model.forward()
 
-    height_profile_x_la, height_profile_y_la = getHeightProfile(mean_intensity[0, ..., L, 0])
+    height_profile_x_la, height_profile_y_la = getHeightProfile(gfm[0, ..., L, 0])
     height_profile_x_true, height_profile_y_true = getHeightProfile(samples[0, ..., L])
     height_profile_x_pred, height_profile_y_pred = getHeightProfile(pred[0, ..., L])
 
@@ -170,9 +164,9 @@ def update_L(val):
 def start_optimization(val):
     print('1) optimize scene parameters for training')
 
-    rough = (0.2, Rslider.val, True)
-    diffuse = (0.2, Dslider.val, True)
-    reflactance = (0.2, Fslider.val, True)
+    rough = Rslider.val
+    diffuse = Dslider.val
+    reflactance = Fslider.val
     intensity = Islider.val
 
     its = int(iterations.text) + 1
@@ -186,10 +180,8 @@ def start_optimization(val):
     plt.close()
 
     parameters = optimizeParameters(path_target='realSamples1', path_results=path_results, para_lights=LP.value,
-                                    iterations=its, intensity=intensity, weight_decay=0.0, mean_intensity=mean_intensity,
-                                    # (synthetic, initial, parameter)
-                                    rough=rough, diffuse=diffuse, reflectance=reflactance, selected_lights=selected_lights,
-                                    synthetic=SynB.value, surface_opimization=True)
+                                    iterations=its, intensity=intensity,
+                                    rough=rough, diffuse=diffuse, reflectance=reflactance, selected_lights=selected_lights)
 
 
 def change_synthetic(val):

@@ -1,6 +1,5 @@
 from torch import nn
 from torch.nn.parameter import Parameter
-import torch
 import torchvision
 import torch.nn.functional as F
 from filament_renderer import filament_renderer
@@ -87,38 +86,45 @@ class ResBlock(nn.Module):
 ###############################################
 
 class OptimizeParameters(nn.Module):
-    def __init__(self, surface, lights, camera, gfm,
-                 shadowing=True, par_li=False,
-                 par_r=True, par_d=True, par_ref=True,
-                 device='cpu',
-                 intensity=1.,
+    def __init__(self, surface, lights, camera,
+                 shadowing=True,
+                 intensity=70.,
                  rough=0.5, diffuse=0.5, reflectance=0.5):
+        '''
+        initialization of class OptimizeParameters
+        :param surface:
+        :param lights:
+        :param camera:
+        :param shadowing:
+        :param intensity:
+        :param rough:
+        :param diffuse:
+        :param reflectance:
+        '''
         super().__init__()
-
-
-        self.mesh = Parameter(surface[0].to(device)) if surface[1] else surface[0].to(device)
+        self.surface = Parameter(surface)
         self.lights_origin = lights[0]
-        self.lights = Parameter(lights[0].to(device)) if lights[1]  else lights[0].to(device)
-        self.camera = Parameter(camera[0].to(device)) if camera[1] else camera[0].to(device)
+        self.lights = Parameter(lights[0]) if lights[1] else lights[0]
+        self.camera = Parameter(camera[0])
 
 
-        light_intensity = torch.ones((1,1,1,1,12,1)).to(device)
-        self.light_intensity = Parameter(light_intensity) if par_li else light_intensity
-        self.light_color = torch.ones_like(self.light_intensity).to(device)
-        self.intensity = torch.tensor(intensity).to(device)
+        light_intensity = torch.ones((1,1,1,1,12,1))
+        self.light_intensity = Parameter(light_intensity)
+        self.light_color = torch.ones_like(self.light_intensity)
+        self.intensity = torch.tensor(intensity)
 
-        self.rough = Parameter(torch.tensor(rough).to(device)) if par_r else torch.tensor(rough).to(device)
-        self.diffuse = Parameter(torch.tensor(diffuse).to(device)) if par_d else torch.tensor(diffuse).to(device)
-        self.reflectance = Parameter(torch.tensor(reflectance).to(device)) if par_ref else torch.tensor(reflectance).to(device)
+        # material parameters
+        self.rough = Parameter(torch.tensor(rough))
+        self.diffuse = Parameter(torch.tensor(diffuse))
+        self.reflectance = Parameter(torch.tensor(reflectance))
 
-        self.gfm = gfm.to(device)
+        self.gfm = getGfm()# gaussian filtered median
 
-        self.device = device
-
+        # shadow effects
         self.shadowing = shadowing
         self.shadow = None
 
-        # values for plotting
+        # relevant values for plotting
         self.errs = []
         self.errors = []
         self.roughs = []
@@ -129,18 +135,18 @@ class OptimizeParameters(nn.Module):
         self.l_to_zero = []
 
     def forward(self):
-        rough = torch.clamp(self.rough, min=0., max=1.)
-        diffuse = torch.clamp(self.diffuse, min=0., max=1.)
+
+        device = self.surface.device
 
         light_intensity = self.light_intensity * self.intensity
 
-        mesh = self.mesh - torch.mean(self.mesh)
+        surface = self.surface - torch.mean(self.surface)
 
-        color = filament_renderer(mesh, self.camera, self.lights,
-                                 rough=rough, diffuse=diffuse, light_intensity=light_intensity, light_color=self.light_color, reflectance=self.reflectance)
+        color = filament_renderer(surface, self.camera, self.lights,
+                                 rough=self.rough, diffuse=self.diffuse, light_intensity=light_intensity, light_color=self.light_color, reflectance=self.reflectance)
 
         if self.shadowing and self.shadow is None:
-            self.shadow = (self.gfm / color).detach()
+            self.shadow = (self.gfm.to(device) / color).detach()
 
         if self.shadowing:
             return (color * self.shadow).squeeze(-1)
@@ -163,16 +169,17 @@ class OptimizeParameters(nn.Module):
 
             plt.savefig(os.path.join(path, f'TrueRGB-{L}.png'))
             plt.close()
-    def plotDiagrams(self, model, plot_every, path, synthetic,
-                     rough_origin=0, reflectance_origin=0, diffuse_origin=0):
-        model.l_to_origin.append(
-            torch.linalg.norm(self.lights_origin .cpu().detach() - model.lights.cpu().detach(), axis=-1).tolist())
-        model.l_to_zero.append(torch.linalg.norm(model.lights.cpu().detach(), axis=-1).tolist())
+    def plotDiagrams(self, plot_every, path):
 
-        x = np.linspace(0, len(model.l_to_origin) - 1, len(model.l_to_origin)) * plot_every
+        device = self.surface.device
+        self.l_to_origin.append(
+            torch.linalg.norm(self.lights_origin .cpu().detach() - self.lights.cpu().detach(), axis=-1).tolist())
+        self.l_to_zero.append(torch.linalg.norm(self.lights.cpu().detach(), axis=-1).tolist())
+
+        x = np.linspace(0, len(self.l_to_origin) - 1, len(self.l_to_origin)) * plot_every
 
         for L in range(12):
-            plt.plot(x, np.array(model.l_to_origin)[:, L], label=f'{L}')
+            plt.plot(x, np.array(self.l_to_origin)[:, L], label=f'{L}')
 
         plt.xlabel('iteration')
         plt.ylabel('distance to origin')
@@ -180,10 +187,10 @@ class OptimizeParameters(nn.Module):
         plt.savefig(os.path.join(path, 'l_to_origin.png'))
         plt.close()
 
-        x = np.linspace(0, len(model.l_to_zero) - 1, len(model.l_to_zero)) * plot_every
+        x = np.linspace(0, len(self.l_to_zero) - 1, len(self.l_to_zero)) * plot_every
 
         for L in range(12):
-            plt.plot(x, np.array(model.l_to_zero)[:, L], label=f'{L}')
+            plt.plot(x, np.array(self.l_to_zero)[:, L], label=f'{L}')
 
         plt.xlabel('iteration')
         plt.ylabel('distance to zero')
@@ -192,17 +199,15 @@ class OptimizeParameters(nn.Module):
         plt.savefig(os.path.join(path, 'l_to_zero.png'))
         plt.close()
 
-        x = np.linspace(0, len(model.errors) - 1, len(model.errors)) * plot_every
-        plt.plot(x, model.errors, label='errors')
+        x = np.linspace(0, len(self.errors) - 1, len(self.errors)) * plot_every
+        plt.plot(x, self.errors, label='errors')
         plt.xlabel('iteration')
         plt.ylabel('Error')
         plt.legend()
         plt.savefig(os.path.join(path, f'error.png'))
         plt.close()
 
-        if synthetic:
-            height_profile_x_gt, height_profile_y_gt = getHeightProfile(self.mesh)
-        height_profile_x_pred, height_profile_y_pred = getHeightProfile(model.mesh)
+        height_profile_x_pred, height_profile_y_pred = getHeightProfile(self.surface)
 
         x = np.linspace(0, len(height_profile_x_pred) - 1, len(height_profile_x_pred))
         y = np.linspace(0, len(height_profile_y_pred) - 1, len(height_profile_y_pred))
@@ -210,8 +215,6 @@ class OptimizeParameters(nn.Module):
         plt.figure(figsize=(20, 10))
         plt.subplot(1, 2, 1)
 
-        if synthetic:
-            plt.plot(x, height_profile_x_gt, label='ground truth')
         plt.plot(x, height_profile_x_pred, label='prediction')
         plt.xlabel('pixels')
         plt.ylabel('height')
@@ -220,8 +223,6 @@ class OptimizeParameters(nn.Module):
 
         plt.subplot(1, 2, 2)
 
-        if synthetic:
-            plt.plot(y, height_profile_y_gt, label='ground truth')
         plt.plot(y, height_profile_y_pred, label='prediction')
         plt.xlabel('pixels')
         plt.ylabel('height')
@@ -231,8 +232,8 @@ class OptimizeParameters(nn.Module):
         plt.savefig(os.path.join(path, f'height-profile.png'))
         plt.close()
 
-        normal_vectors = getNormals(model.mesh.detach())
-        z_vector = torch.tensor([0., 0., 1.]).to(self.device).unsqueeze(0).unsqueeze(0).unsqueeze(0).unsqueeze(0)
+        normal_vectors = getNormals(self.surface.detach())
+        z_vector = torch.tensor([0., 0., 1.]).to(device).unsqueeze(0).unsqueeze(0).unsqueeze(0).unsqueeze(0)
 
         angles = torch.acos((z_vector * normal_vectors).sum(dim=-1, keepdim=True)) * 90 / (torch.pi / 2)
 
@@ -241,40 +242,15 @@ class OptimizeParameters(nn.Module):
         plt.savefig(os.path.join(path, f'angles.png'))
         plt.close()
 
-        if synthetic:
-            plt.figure(figsize=(20, 10))
-            plt.subplot(1, 2, 1)
-
-        x = np.linspace(0, len(model.roughs) - 1, len(model.roughs)) * plot_every
-        plt.plot(x, model.roughs, label='rough', color='red')
-        plt.plot(x, model.diffuses, label='diffuse', color='green')
-        plt.plot(x, model.reflectances, label='reflectance', color='blue')
+        x = np.linspace(0, len(self.roughs) - 1, len(self.roughs)) * plot_every
+        plt.plot(x, self.roughs, label='rough', color='red')
+        plt.plot(x, self.diffuses, label='diffuse', color='green')
+        plt.plot(x, self.reflectances, label='reflectance', color='blue')
 
         plt.xlabel('iterations')
         plt.ylabel('value')
-        if synthetic:
-            plt.plot(x, [rough_origin] * len(model.roughs), color='red', linestyle='dashed')
-            plt.plot(x, [diffuse_origin] * len(model.diffuses), color='green', linestyle='dashed')
-            plt.plot(x, [reflectance_origin] * len(model.reflectances), color='blue', linestyle='dashed')
-            plt.title(f'parameters with constant intensity {model.intensity.cpu().detach().numpy().item()}\n'
-                      f'Synthetic: (rough,diffuse,reflectance)={(rough_origin, diffuse_origin, reflectance_origin)}; \n'
-                      f'Initial value vor prediction: (rough,diffuse,reflectance)={(rough_origin, diffuse_origin, reflectance_origin)}')
-        else:
-            plt.title(f'parameters with constant intensity {model.intensity.cpu().detach().numpy().item()}')
+        plt.title(f'parameters with constant intensity {self.intensity.cpu().detach().numpy().item()}')
         plt.legend()
-
-        if synthetic:
-            plt.subplot(1, 2, 2)
-
-            surface_line = self.mesh.cpu().detach().numpy()[0, 200, :]
-            pred_surface_line = model.mesh.cpu().detach().numpy()[0, 200, :]
-
-            x = np.linspace(0, len(surface_line) - 1, len(surface_line))
-            plt.plot(x, surface_line, label='ground truth')
-            plt.plot(x, pred_surface_line, label='prediction')
-            plt.xlabel('x')
-            plt.ylabel('height')
-            plt.legend()
 
         plt.savefig(os.path.join(path, f'material-parameters.png'))
         plt.close()
@@ -290,8 +266,8 @@ class OptimizeParameters(nn.Module):
                     f'Rough {self.rough.item()} Diffuse {self.diffuse.item()} Reflectance {self.reflectance.item()} \n'
                     f'Camera {self.camera.detach()}\n'
                     f'Lights {self.lights.detach()}\n'
-                    f'Surface Max {self.mesh.detach().max()}'
-                    f'Surface min {self.mesh.detach().min()}\n'
+                    f'Surface Max {self.surface.detach().max()}'
+                    f'Surface min {self.surface.detach().min()}\n'
                     f'Light Intensity {self.light_intensity.detach()}\n'
                     f'Intensity {self.intensity.detach()}\n'
                     f'AVG Err {statistics.mean(self.errs[-10:])}\n'
@@ -306,7 +282,7 @@ class OptimizeParameters(nn.Module):
         torch.save(self.lights.detach().cpu(), os.path.join(path, 'lights.pt'))
         torch.save(self.light_intensity.detach(), os.path.join(path, 'light_intensity.pt'))
         torch.save(self.intensity.detach(), os.path.join(path, 'intensity.pt'))
-        torch.save(self.mesh.detach(), os.path.join(path, 'surface.pt'))
+        torch.save(self.surface.detach(), os.path.join(path, 'surface.pt'))
         torch.save(self.shadow.detach(), os.path.join(path, 'shadow.pt'))
 
 
