@@ -1,5 +1,3 @@
-import torch
-
 from filament import evaluate_point_lights
 import torch.nn.functional as tfunc
 from utils import *

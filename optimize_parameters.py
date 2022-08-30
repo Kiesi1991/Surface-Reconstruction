@@ -8,10 +8,9 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
                        iterations=3001,
                        intensity=2.5, selected_lights='all', para_lights=True,
                        rough=0.5, diffuse=0.5, reflectance=0.5,
-                       regularization_function='exp'):
+                       regularization_function='exp', lam = 0.000001):
 
     plot_every = iterations // 8
-    lam = 0.000001
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -57,6 +56,7 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
             if iteration % 50 == 0:
                 model.errors.append(statistics.mean(model.errs[-10:]))
 
+            # apply some plotting functions to the intermediate results
             if iteration % plot_every == 0:
 
                 model.roughs.append(model.rough.cpu().detach().numpy().item())

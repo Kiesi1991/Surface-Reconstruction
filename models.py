@@ -47,14 +47,11 @@ class ResidualNetwork(nn.Module):
         self.head = nn.Conv2d(12, 1, kernel_size=3, padding=3//2)
     lam = 0.000001
     def forward(self, x):
-        #ftrs = []
         x = self.begin(x)
         for block in self.res_blocks:
             x = block(x)
-            #ftrs.append(x)
         x = self.head(x)
         return x.squeeze(1)
-        #return torch.clamp(x.squeeze(1), min=-0.5, max=0.5)
 
 class ResBlock(nn.Module):
     def __init__(self, in_ch):
@@ -92,22 +89,22 @@ class OptimizeParameters(nn.Module):
                  rough=0.5, diffuse=0.5, reflectance=0.5):
         '''
         initialization of class OptimizeParameters
-        :param surface:
-        :param lights:
-        :param camera:
-        :param shadowing:
-        :param intensity:
-        :param rough:
-        :param diffuse:
-        :param reflectance:
+        :param surface: (B, H, W), surface matrix in pixel-to-height representation
+        :param lights: (tuple) -> (lights, boolean), lights: (L,3) light positions for all 12 light sources, boolean: if True lights is Parameter else is not a Parameter
+        :param camera: (1, 1, 1, 1, 3), camera position
+        :param shadowing: (boolean), if True shadow effects are applied to output of Filament renderer
+        :param intensity: (int), light intensity of all light sources
+        :param rough: (int), material parameter
+        :param diffuse: (int), material parameter
+        :param reflectance: (int), material parameter
         '''
         super().__init__()
+
+        # scene parameters
         self.surface = Parameter(surface)
         self.lights_origin = lights[0]
         self.lights = Parameter(lights[0]) if lights[1] else lights[0]
         self.camera = camera
-
-
         light_intensity = torch.ones((1,1,1,1,12,1))
         self.light_intensity = light_intensity
         self.light_color = torch.ones_like(self.light_intensity)
@@ -118,7 +115,8 @@ class OptimizeParameters(nn.Module):
         self.diffuse = Parameter(torch.tensor(diffuse))
         self.reflectance = Parameter(torch.tensor(reflectance))
 
-        self.gfm = getGfm()# gaussian filtered median
+        # gaussian filtered median
+        self.gfm = getGfm()
 
         # shadow effects
         self.shadowing = shadowing
@@ -135,25 +133,31 @@ class OptimizeParameters(nn.Module):
         self.l_to_zero = []
 
     def forward(self):
-
+        '''
+        forward rendering function with applying Filament Renderer.
+        :return: if shadowing=True the function outputs a rendered pytorch tensor multiplied with shadow effects, else the function outputs a rendered pytorch tensor without applying shadow effects.
+        '''
         device = self.surface.device
-
         light_intensity = self.light_intensity * self.intensity
-
         surface = self.surface - torch.mean(self.surface)
-
         color = filament_renderer(surface, self.camera.to(device), self.lights,
-                                 rough=self.rough, diffuse=self.diffuse, light_intensity=light_intensity, light_color=self.light_color, reflectance=self.reflectance)
-
+                                 rough=self.rough, diffuse=self.diffuse, reflectance=self.reflectance,
+                                 light_intensity=light_intensity, light_color=self.light_color)
         if self.shadowing and self.shadow is None:
             self.shadow = (self.gfm.to(device) / color).detach()
-
         if self.shadowing:
             return (color * self.shadow).squeeze(-1)
         else:
             return color.squeeze(-1)
 
     def plotImageComparism(self, samples, pred, path):
+        '''
+        save 12 images, which demonstrates the comparism of a real cabin-cap image with the prediction output of the Filament Renderer
+        :param samples: (B, 1, H, W, 12), real cabin-cap image samples in pytorch tensor type
+        :param pred: (B, 1, H, W, 12), prediction of cabin-cap samples (output of Filament renderer)
+        :param path: (str), directory path for saving images
+        :return: None
+        '''
         for L in range(samples.shape[4]):
             p = cv2.cvtColor(pred[0, 0, ..., L].cpu().detach().numpy(), cv2.COLOR_GRAY2RGB)
             t = cv2.cvtColor(samples[0, 0, ..., L].cpu().detach().numpy(), cv2.COLOR_GRAY2RGB)
@@ -170,7 +174,19 @@ class OptimizeParameters(nn.Module):
             plt.savefig(os.path.join(path, f'TrueRGB-{L}.png'))
             plt.close()
     def plotDiagrams(self, plot_every, path):
-
+        '''
+        plot
+        angles.png -> image, where every pixel value demonstrates the angle between normal vector and a vector in z-direction (0, 0, 1),
+        error.png -> error while optimization,
+        height-profile.png -> a height profile in x- and y-direction,
+        l_to_origin.png -> line diagram with 12 lines corresponding to the 12 light sources, every line illustrates the distance between origin (position in construction plan) and actual optimized position,
+        l_to_zero.png -> same as l_to_origin.png, but instead of origin distance is compared to position (0, 0, 0),
+        material-parameters.png -> change of material parameters while optimization
+        and save them to the given directory path.
+        :param plot_every: (int), plotting period
+        :param path: (str), string path, where plots are saved
+        :return: None
+        '''
         device = self.surface.device
         self.l_to_origin.append(
             torch.linalg.norm(self.lights_origin .cpu().detach() - self.lights.cpu().detach(), axis=-1).tolist())
@@ -256,6 +272,18 @@ class OptimizeParameters(nn.Module):
         plt.close()
 
     def createParametersFile(self, path, selected_lights='all levels'):
+        '''
+        create parameters.txt file in directory path
+        :param path: (str), string path, where textfile is saved
+        :param selected_lights: (str), if
+        'all levels': optimization happens for all light sources levels,
+        'level 1': optimization happens only for level 1 light sources,
+        'level 2': optimization happens only for level 2 light sources,
+        'level 3': optimization happens only for level 3 light sources,
+        'level 2+3': optimization happens only for level 2+3 light sources,
+        oll other levels are neglected.
+        :return: None
+        '''
         parameters = []
         for name, param in self.named_parameters():
             if param.requires_grad:
@@ -275,6 +303,11 @@ class OptimizeParameters(nn.Module):
                     f'Optimization with lights: {selected_lights}')
     
     def saveParameters(self, path):
+        '''
+        save all relevant parameters in given directory path
+        :param path: (str), string path, where parameters are saved
+        :return: None
+        '''
         torch.save(self.rough.detach().cpu(), os.path.join(path, 'rough.pt'))
         torch.save(self.diffuse.detach().cpu(), os.path.join(path, 'diffuse.pt'))
         torch.save(self.reflectance.detach().cpu(), os.path.join(path, 'reflectance.pt'))
