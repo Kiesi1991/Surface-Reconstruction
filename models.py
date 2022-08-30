@@ -105,7 +105,7 @@ class OptimizeParameters(nn.Module):
         self.surface = Parameter(surface)
         self.lights_origin = lights[0]
         self.lights = Parameter(lights[0]) if lights[1] else lights[0]
-        self.camera = Parameter(camera[0])
+        self.camera = camera
 
 
         light_intensity = torch.ones((1,1,1,1,12,1))
@@ -142,7 +142,7 @@ class OptimizeParameters(nn.Module):
 
         surface = self.surface - torch.mean(self.surface)
 
-        color = filament_renderer(surface, self.camera, self.lights,
+        color = filament_renderer(surface, self.camera.to(device), self.lights,
                                  rough=self.rough, diffuse=self.diffuse, light_intensity=light_intensity, light_color=self.light_color, reflectance=self.reflectance)
 
         if self.shadowing and self.shadow is None:
