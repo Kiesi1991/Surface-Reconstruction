@@ -109,7 +109,7 @@ class OptimizeParameters(nn.Module):
 
 
         light_intensity = torch.ones((1,1,1,1,12,1))
-        self.light_intensity = Parameter(light_intensity)
+        self.light_intensity = light_intensity
         self.light_color = torch.ones_like(self.light_intensity)
         self.intensity = torch.tensor(intensity)
 

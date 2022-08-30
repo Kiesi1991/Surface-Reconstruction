@@ -8,7 +8,7 @@ from matplotlib.widgets import TextBox
 from torch.nn.parameter import Parameter
 
 rough, diffuse, relectance = 0.295, 0.53, 0.842
-intensity = 70.39
+intensity = 75.
 
 if torch.cuda.is_available():
     device = 'cuda'
@@ -102,7 +102,7 @@ def update(val):
     model.rough = Parameter(torch.tensor(Rslider.val))
     model.reflectance = Parameter(torch.tensor(Fslider.val))
     model.diffuse = Parameter(torch.tensor(Dslider.val))
-    model.intensity = Parameter(torch.tensor(Islider.val))
+    model.intensity = Islider.val
     pred = model.forward()
 
     height_profile_x_pred, height_profile_y_pred = getHeightProfile(pred[0, ..., int(radio.value_selected)])
