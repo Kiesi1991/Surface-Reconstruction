@@ -90,7 +90,7 @@ LP.hovercolor = 'red'
 
 itbox = fig.add_axes([0.2, 0.01, 0.3, 0.075])
 iterations = TextBox(itbox, "Iterations", textalignment="center")
-iterations.set_val("100000")
+iterations.set_val("50000")
 
 path_results = os.path.join('results', 'optimization', '0')
 res_path_box = fig.add_axes([0.2, 0.09, 0.65, 0.05])

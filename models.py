@@ -163,10 +163,12 @@ class OptimizeParameters(nn.Module):
             plt.figure(figsize=(20, 10))
             plt.subplot(1, 2, 1)
             plt.imshow(t)
+            plt.title('real sample')
             plt.clim(0, 1.0)
 
             plt.subplot(1, 2, 2)
             plt.imshow(p)
+            plt.title('rendered sample')
             plt.clim(0, 1.0)
 
             plt.savefig(os.path.join(path, f'TrueRGB-{L}.png'))
