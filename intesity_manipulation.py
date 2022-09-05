@@ -7,7 +7,7 @@ from optimize_parameters import optimizeParameters
 from matplotlib.widgets import TextBox
 from torch.nn.parameter import Parameter
 
-rough, diffuse, relectance = 0.295, 0.53, 0.842
+rough, diffuse, relectance = 0.5, 0.5, 0.5
 
 if torch.cuda.is_available():
     device = 'cuda'
@@ -20,8 +20,6 @@ samples = getRealSamples('realSamples1')
 
 gfm = getGfm()
 L= 0
-
-
 
 model = OptimizeParameters(surface, (lights,False), camera,
                                shadowing=False,
