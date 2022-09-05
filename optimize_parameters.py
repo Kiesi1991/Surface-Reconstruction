@@ -5,8 +5,7 @@ from tqdm import tqdm
 
 def optimizeParameters(path_target='realSamples', path_results=os.path.join('results', 'optimization'),
                        lr=1e-4,
-                       iterations=3001,
-                       intensity=2.5, selected_lights='all', para_lights=True,
+                       iterations=3001, selected_lights='all', para_lights=True,
                        rough=0.5, diffuse=0.5, reflectance=0.5,
                        regularization_function='exp', lam = 0.000001):
 
@@ -25,8 +24,7 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
     path = createNextFolder(path_results)
 
     model = OptimizeParameters(surface, (lights, para_lights), camera,
-                               rough=rough, diffuse=diffuse, reflectance=reflectance,
-                               intensity=intensity)
+                               rough=rough, diffuse=diffuse, reflectance=reflectance)
 
     model.to(device)
 
@@ -70,7 +68,6 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
                 model.roughs.append(model.rough.cpu().detach().numpy().item())
                 model.diffuses.append(model.diffuse.cpu().detach().numpy().item())
                 model.reflectances.append(model.reflectance.cpu().detach().numpy().item())
-                model.intensities.append(model.intensity.cpu().detach().numpy().item())
 
                 os.mkdir(os.path.join(path, f'iteration-{iteration}'))
                 path2 = os.path.join(path, f'iteration-{iteration}')
@@ -86,6 +83,4 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
             'reflectance' : model.reflectance.detach().cpu(),
             'camera' : model.camera.detach().cpu(),
             'lights' : model.lights.detach().cpu(),
-            'light_intensity': model.light_intensity.detach().cpu(),
-            'intensity': model.intensity.detach().cpu()
             }

@@ -199,7 +199,7 @@ def getHeightProfile(surface):
     B,H,W = surface.shape
     height_profile_x = surface.cpu().detach().numpy()[0, H//2, :]
     height_profile_y = surface.cpu().detach().numpy()[0, :, W//2]
-    return height_profile_x, height_profile_y
+    return height_profile_x / height_profile_x.mean(), height_profile_y / height_profile_y.mean()
 
 def getLightNumeration(level):
     '''
@@ -224,23 +224,19 @@ def get_scene_parameters(path):
     rough = torch.load(os.path.join(path, 'rough.pt'))
     diffuse = torch.load(os.path.join(path, 'diffuse.pt'))
     reflectance = torch.load(os.path.join(path, 'reflectance.pt'))
-    light_intensity = torch.load(os.path.join(path, 'light_intensity.pt'))
-    intensity = torch.load(os.path.join(path, 'intensity.pt'))
     shadow = torch.load(os.path.join(path, 'shadow.pt'))
 
     return {'surface':surface, 'lights':lights, 'camera':camera,
             'rough':rough, 'diffuse':diffuse, 'reflectance':reflectance,
-            'light_intensity':light_intensity, 'intensity':intensity,
             'shadow': shadow}
 
-def filament_renderer(surface, camera, lights, light_intensity,
+def filament_renderer(surface, camera, lights,
                       rough=0.5, diffuse=0.5, reflectance=0.5):
     '''
     calculates intermediate variables for Filament renderer and apply Filament renderer
     :param surface: (B, H, W), surface matrix in pixel-to-height representation
     :param camera: (1, 1, 1, 1, 3), camera position
     :param lights: (12, 3), light positions
-    :param light_intensity: (1, 1, 1, 1, 12, 1), light intensities of all light sources
     :param rough: (int(pytorch Parameter)), material parameter
     :param diffuse: (int(pytorch Parameter)), material parameter
     :param reflectance: (int(pytorch Parameter)), material parameter
@@ -265,8 +261,8 @@ def filament_renderer(surface, camera, lights, light_intensity,
     NoV = (N * V).sum(dim=-1, keepdim=True)
 
     return evaluate_point_lights(
-        light_color=torch.ones_like(light_intensity).to(surface.device), # S?,C?,1,1,L?,CH
-        light_intensity=light_intensity.to(surface.device), # S?,C?,1,1,L?,1
+        light_color=torch.ones_like(torch.ones((1,1,1,1,12,1))).to(surface.device), # S?,C?,1,1,L?,CH
+        light_intensity=torch.ones((1,1,1,1,12,1)).to(surface.device), # S?,C?,1,1,L?,1
         light_attenuation=light_attenuation, # S,C,H,W,L,1
         diffuseColor=(torch.ones((1, 1, 1, 1, 1, 1)).to(surface.device)*diffuse).to(surface.device), # S?,C?,H?,W?,1,CH
         perceptual_roughness=perceptual_roughness, # S?,C?,H?,W?,1,1

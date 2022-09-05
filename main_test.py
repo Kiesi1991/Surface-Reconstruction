@@ -6,14 +6,13 @@ from utils import *
 rough = 0.5
 diffuse = 0.5
 reflactance = 0.5
-intensity = 75
 selected_lights = 'all levels'
 path_results = os.path.join('results', 'test-optimization', '0')
 its = 1000
 para_lights = True
 
 parameters = optimizeParameters(path_target='realSamples1', path_results=path_results, para_lights=para_lights,
-                                    iterations=its, intensity=intensity,
+                                    iterations=its,
                                     # (synthetic, initial)
                                     rough=rough, diffuse=diffuse, reflectance=reflactance, selected_lights=selected_lights)
 

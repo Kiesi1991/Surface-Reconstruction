@@ -83,8 +83,7 @@ class ResBlock(nn.Module):
 
 class OptimizeParameters(nn.Module):
     def __init__(self, surface, lights, camera,
-                 shadowing=True,
-                 intensity=70.,
+                 shadowing = True,
                  rough=0.5, diffuse=0.5, reflectance=0.5):
         '''
         initialization of class OptimizeParameters
@@ -92,7 +91,6 @@ class OptimizeParameters(nn.Module):
         :param lights: (tuple) -> (lights, boolean), lights: (L,3) light positions for all 12 light sources, boolean: if True lights is Parameter else is not a Parameter
         :param camera: (1, 1, 1, 1, 3), camera position
         :param shadowing: (boolean), if True shadow effects are applied to output of Filament renderer
-        :param intensity: (int), light intensity of all light sources
         :param rough: (int), material parameter
         :param diffuse: (int), material parameter
         :param reflectance: (int), material parameter
@@ -104,9 +102,6 @@ class OptimizeParameters(nn.Module):
         self.lights_origin = lights[0]
         self.lights = Parameter(lights[0]) if lights[1] else lights[0]
         self.camera = camera
-        light_intensity = torch.ones((1,1,1,1,12,1))
-        self.light_intensity = light_intensity
-        self.intensity = torch.tensor(intensity)
 
         # material parameters
         self.rough = Parameter(torch.tensor(rough))
@@ -126,7 +121,6 @@ class OptimizeParameters(nn.Module):
         self.roughs = []
         self.diffuses = []
         self.reflectances = []
-        self.intensities = []
         self.l_to_origin = []
         self.l_to_zero = []
 
@@ -136,12 +130,10 @@ class OptimizeParameters(nn.Module):
         :return: if shadowing=True the function outputs a rendered pytorch tensor multiplied with shadow effects, else the function outputs a rendered pytorch tensor without applying shadow effects.
         '''
         device = self.surface.device
-        light_intensity = self.light_intensity * self.intensity
         surface = self.surface - torch.mean(self.surface)
         output = filament_renderer(surface, self.camera.to(device), self.lights,
-                                 rough=self.rough, diffuse=self.diffuse, reflectance=self.reflectance,
-                                 light_intensity=light_intensity)
-        if self.shadowing and self.shadow is None:
+                                 rough=self.rough, diffuse=self.diffuse, reflectance=self.reflectance)
+        if self.shadow is None:
             self.shadow = (self.gfm.to(device) / output).detach()
         if self.shadowing:
             return (output * self.shadow).squeeze(-1)
@@ -265,7 +257,6 @@ class OptimizeParameters(nn.Module):
 
         plt.xlabel('iterations')
         plt.ylabel('value')
-        plt.title(f'parameters with constant intensity {self.intensity.cpu().detach().numpy().item()}')
         plt.legend()
 
         plt.savefig(os.path.join(path, f'material-parameters.png'))
@@ -296,8 +287,6 @@ class OptimizeParameters(nn.Module):
                     f'Lights {self.lights.detach()}\n'
                     f'Surface Max {self.surface.detach().max()}'
                     f'Surface min {self.surface.detach().min()}\n'
-                    f'Light Intensity {self.light_intensity.detach()}\n'
-                    f'Intensity {self.intensity.detach()}\n'
                     f'AVG Err {statistics.mean(self.errs[-10:])}\n'
                     f'Difference lights {torch.linalg.norm(self.lights_origin.cpu() - self.lights.cpu().detach(), axis=-1)}\n'
                     f'Optimization with lights: {selected_lights}')
@@ -313,8 +302,6 @@ class OptimizeParameters(nn.Module):
         torch.save(self.reflectance.detach().cpu(), os.path.join(path, 'reflectance.pt'))
         torch.save(self.camera.detach().cpu(), os.path.join(path, 'camera.pt'))
         torch.save(self.lights.detach().cpu(), os.path.join(path, 'lights.pt'))
-        torch.save(self.light_intensity.detach(), os.path.join(path, 'light_intensity.pt'))
-        torch.save(self.intensity.detach(), os.path.join(path, 'intensity.pt'))
         torch.save(self.surface.detach(), os.path.join(path, 'surface.pt'))
         torch.save(self.shadow.detach(), os.path.join(path, 'shadow.pt'))
 

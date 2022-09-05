@@ -8,7 +8,6 @@ from matplotlib.widgets import TextBox
 from torch.nn.parameter import Parameter
 
 rough, diffuse, relectance = 0.295, 0.53, 0.842
-intensity = 75.
 
 if torch.cuda.is_available():
     device = 'cuda'
@@ -24,8 +23,9 @@ L= 0
 
 
 
-model = OptimizeParameters(surface, (lights,False), camera, shadowing=False,
-                               rough=rough, diffuse=diffuse, reflectance=relectance, intensity=intensity)
+model = OptimizeParameters(surface, (lights,False), camera,
+                               shadowing=False,
+                               rough=rough, diffuse=diffuse, reflectance=relectance)
 model.eval()
 
 pred = model.forward()
@@ -37,21 +37,21 @@ plt.rcParams["figure.autolayout"] = False
 fig, (ax1, ax2) = plt.subplots(1,2)
 plt.subplots_adjust(bottom=0.4)
 
-height_profile_x_la, height_profile_y_la = getHeightProfile(gfm[0,...,L,0])
+height_profile_x_gfm, height_profile_y_gfm = getHeightProfile(gfm[0,...,L,0])
 height_profile_x_true, height_profile_y_true = getHeightProfile(samples[0,...,L])
 height_profile_x_pred, height_profile_y_pred = getHeightProfile(pred[0,...,L])
 
-x = np.linspace(0, len(height_profile_x_la) - 1, len(height_profile_x_la))
-y = np.linspace(0, len(height_profile_y_la) - 1, len(height_profile_y_la))
+x = np.linspace(0, len(height_profile_x_gfm) - 1, len(height_profile_x_gfm))
+y = np.linspace(0, len(height_profile_y_gfm) - 1, len(height_profile_y_gfm))
 
-ax1.plot(x, height_profile_x_la, label='gfm', color='red')
+ax1.plot(x, height_profile_x_gfm, label='gfm', color='red')
 ax1.plot(x, height_profile_x_true, label='ground truth', color='green')
 ax1.plot(x, height_profile_x_pred, label='prediction', color='blue')
 ax1.set(xlabel='pixels', ylabel='height')
 ax1.legend()
 ax1.set_title('profile in x-direction')
 
-ax2.plot(y, height_profile_y_la, label='gfm', color='red')
+ax2.plot(y, height_profile_y_gfm, label='gfm', color='red')
 ax2.plot(y, height_profile_y_true, label='ground truth', color='green')
 ax2.plot(y, height_profile_y_pred, label='prediction', color='blue')
 ax2.set(xlabel='pixels', ylabel='height')
@@ -62,11 +62,9 @@ axcolor = 'yellow'
 rough_slider = plt.axes([0.20, 0.16, 0.3, 0.03], facecolor=axcolor)
 reflectance_slider = plt.axes([0.20, 0.2, 0.3, 0.03], facecolor=axcolor)
 diffuse_slider = plt.axes([0.20, 0.24, 0.3, 0.03], facecolor=axcolor)
-intensity_slider = plt.axes([0.20, 0.28, 0.3, 0.03], facecolor=axcolor)
 Rslider = Slider(rough_slider, 'Rough', 0.0, 1.0, valinit=rough)
 Fslider = Slider(reflectance_slider, 'reflectance', 0.0, 1.0, valinit=relectance)
 Dslider = Slider(diffuse_slider, 'Diffuse', 0.0, 1.0, valinit=diffuse)
-Islider = Slider(intensity_slider, 'Intensity', 0.0, 100.0, valinit=intensity)
 
 rax = plt.axes([0.01, 0.4, 0.06, 0.4], facecolor=axcolor) #[left, bottom, width, height]
 radio = RadioButtons(rax, ('0','1','2','3','4','5','6','7','8','9','10','11'))
@@ -102,13 +100,12 @@ def update(val):
     model.rough = Parameter(torch.tensor(Rslider.val))
     model.reflectance = Parameter(torch.tensor(Fslider.val))
     model.diffuse = Parameter(torch.tensor(Dslider.val))
-    model.intensity = Islider.val
     pred = model.forward()
 
     height_profile_x_pred, height_profile_y_pred = getHeightProfile(pred[0, ..., int(radio.value_selected)])
 
-    x = np.linspace(0, len(height_profile_x_la) - 1, len(height_profile_x_la))
-    y = np.linspace(0, len(height_profile_y_la) - 1, len(height_profile_y_la))
+    x = np.linspace(0, len(height_profile_x_gfm) - 1, len(height_profile_x_gfm))
+    y = np.linspace(0, len(height_profile_y_gfm) - 1, len(height_profile_y_gfm))
 
     ax1.lines[2].remove()
 
@@ -130,18 +127,18 @@ def update_L(val):
     L = int(val)
     pred = model.forward()
 
-    height_profile_x_la, height_profile_y_la = getHeightProfile(gfm[0, ..., L, 0])
+    height_profile_x_gfm, height_profile_y_gfm = getHeightProfile(gfm[0, ..., L, 0])
     height_profile_x_true, height_profile_y_true = getHeightProfile(samples[0, ..., L])
     height_profile_x_pred, height_profile_y_pred = getHeightProfile(pred[0, ..., L])
 
-    x = np.linspace(0, len(height_profile_x_la) - 1, len(height_profile_x_la))
-    y = np.linspace(0, len(height_profile_y_la) - 1, len(height_profile_y_la))
+    x = np.linspace(0, len(height_profile_x_gfm) - 1, len(height_profile_x_gfm))
+    y = np.linspace(0, len(height_profile_y_gfm) - 1, len(height_profile_y_gfm))
 
     ax1.lines[2].remove()
     ax1.lines[1].remove()
     ax1.lines[0].remove()
 
-    ax1.plot(x, height_profile_x_la, label='gfm', color='red')
+    ax1.plot(x, height_profile_x_gfm, label='gfm', color='red')
     ax1.plot(x, height_profile_x_true, label='ground truth', color='green')
     ax1.plot(x, height_profile_x_pred, label='prediction', color='blue')
     ax1.set(xlabel='pixels', ylabel='height')
@@ -152,7 +149,7 @@ def update_L(val):
     ax2.lines[1].remove()
     ax2.lines[0].remove()
 
-    ax2.plot(y, height_profile_y_la, label='gfm', color='red')
+    ax2.plot(y, height_profile_y_gfm, label='gfm', color='red')
     ax2.plot(y, height_profile_y_true, label='ground truth', color='green')
     ax2.plot(y, height_profile_y_pred, label='prediction', color='blue')
     ax2.set(xlabel='pixels', ylabel='height')
@@ -167,7 +164,6 @@ def start_optimization(val):
     rough = Rslider.val
     diffuse = Dslider.val
     reflactance = Fslider.val
-    intensity = Islider.val
 
     its = int(iterations.text) + 1
     path_results = PathResults.text
@@ -180,7 +176,7 @@ def start_optimization(val):
     plt.close()
 
     parameters = optimizeParameters(path_target='realSamples1', path_results=path_results, para_lights=LP.value,
-                                    iterations=its, intensity=intensity,
+                                    iterations=its,
                                     rough=rough, diffuse=diffuse, reflectance=reflactance, selected_lights=selected_lights)
 
 
@@ -207,7 +203,6 @@ def change_light_parameter(val):
 Rslider.on_changed(update)
 Fslider.on_changed(update)
 Dslider.on_changed(update)
-Islider.on_changed(update)
 radio.on_clicked(update_L)
 start.on_clicked(start_optimization)
 SynB.on_clicked(change_synthetic)
