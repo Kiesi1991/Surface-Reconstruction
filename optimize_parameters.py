@@ -3,36 +3,46 @@ import statistics
 from utils import *
 from tqdm import tqdm
 
-def optimizeParameters(path_target='realSamples', path_results=os.path.join('results', 'optimization'),
+def optimizeParameters(path_real_samples='realSamples', path_results=os.path.join('results', 'optimization'),
                        lr=1e-4,
-                       iterations=3001, selected_lights='all', para_lights=True,
+                       iterations=50000, selected_lights='all levels', para_lights=True,
                        rough=0.5, diffuse=0.5, reflectance=0.5,
                        regularization_function='exp', lam = 0.000001):
-
-    plot_every = iterations // 8
-
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
-
-    #create results path directory
+    '''
+    function, which perform optimization loop, apply plotting functions, initialize optimization model and store optimized parameters
+    :param path_real_samples: (str), directory path to real samples, every subfolder consists of 12 real cabin-cap images
+    :param path_results: (str), directory path, where results should be stored
+    :param lr: (float), learning rate during optimization
+    :param iterations: (int), amount to optimization loops
+    :param selected_lights: (str) -> ['all levels', 'level 1', 'level 2', 'level 3', 'level 2+3'], define which light source levels are relevant for optimization
+    :param para_lights: (boolean), if False light positions are constant, otherwise light positions are trainable
+    :param rough: (float), material parameter
+    :param diffuse: (float), material parameter
+    :param reflectance: (float), material parameter
+    :param regularization_function: (str) -> ['exp', 'square'], regularisation function for light positions
+    :param lam: (float), value between 0 and 1 - hyperparameter for regularisation of light postions
+    :return: (dictionary), dictionary with optmized parameters (material parameter, light positions)
+    '''
+    # create results path directory
     if not os.path.exists(os.path.join(path_results)):
         os.mkdir(os.path.join(path_results))
-
-    samples = getRealSamples(path_target)
+    # preperations before starting optimization
+    plot_every = iterations // 8
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    samples = getRealSamples(path_real_samples)
     start, end = getLightNumeration(selected_lights)
-
     camera, lights, surface = getSceneLocations(batch=samples.shape[0])
     path = createNextFolder(path_results)
-
+    # define optimization model
     model = OptimizeParameters(surface, (lights, para_lights), camera,
                                rough=rough, diffuse=diffuse, reflectance=reflectance)
-
+    # transfer model parameters to "device"
     model.to(device)
-
+    # define loss function an optimizer
     mse = torch.nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=0.0)
-
+    # calculate amount of active lights -> depends on selected lights
     active_lights = abs(end - start) + 1
-
     # optimiziation loop with gradient steps and plotting intermediate results
     for iteration in tqdm(range(iterations)):
             pred = model.forward()
@@ -58,7 +68,6 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
             err.backward()
             optimizer.step()
 
-
             if iteration % 50 == 0:
                 model.errors.append(statistics.mean(model.errs[-10:]))
 
@@ -81,6 +90,5 @@ def optimizeParameters(path_target='realSamples', path_results=os.path.join('res
     return {'rough' : model.rough.detach().cpu(),
             'diffuse' : model.diffuse.detach().cpu(),
             'reflectance' : model.reflectance.detach().cpu(),
-            'camera' : model.camera.detach().cpu(),
             'lights' : model.lights.detach().cpu(),
             }

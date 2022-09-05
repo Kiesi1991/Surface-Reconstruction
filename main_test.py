@@ -11,7 +11,7 @@ path_results = os.path.join('results', 'test-optimization', '0')
 its = 1000
 para_lights = True
 
-parameters = optimizeParameters(path_target='realSamples1', path_results=path_results, para_lights=para_lights,
+parameters = optimizeParameters(path_real_samples='realSamples1', path_results=path_results, para_lights=para_lights,
                                     iterations=its,
                                     # (synthetic, initial)
                                     rough=rough, diffuse=diffuse, reflectance=reflactance, selected_lights=selected_lights)

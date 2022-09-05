@@ -175,7 +175,7 @@ def start_optimization(val):
 
     plt.close()
 
-    parameters = optimizeParameters(path_target='realSamples1', path_results=path_results, para_lights=LP.value,
+    parameters = optimizeParameters(path_real_samples='realSamples1', path_results=path_results, para_lights=LP.value,
                                     iterations=its,
                                     rough=rough, diffuse=diffuse, reflectance=reflactance, selected_lights=selected_lights)
 
