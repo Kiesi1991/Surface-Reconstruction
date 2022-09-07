@@ -215,7 +215,7 @@ class OptimizeParameters(nn.Module):
         plt.savefig(os.path.join(path, f'error.png'))
         plt.close()
 
-        height_profile_x_pred, height_profile_y_pred = getHeightProfile(self.surface)
+        height_profile_x_pred, height_profile_y_pred = getHeightProfile(self.surface, divide_by_mean=False)
 
         x = np.linspace(0, len(height_profile_x_pred) - 1, len(height_profile_x_pred))
         y = np.linspace(0, len(height_profile_y_pred) - 1, len(height_profile_y_pred))

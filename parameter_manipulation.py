@@ -7,16 +7,17 @@ from optimize_parameters import optimizeParameters
 from matplotlib.widgets import TextBox
 from torch.nn.parameter import Parameter
 
-rough, diffuse, relectance = 0.2, 0.2, 0.2
+rough, diffuse, relectance = 0.8, 0.8, 0.8
+path_results = os.path.join('results', 'optimization', '1')
+its = "50000"
+samples = getRealSamples('realSamples1')
 
 if torch.cuda.is_available():
     device = 'cuda'
 else:
     device = 'cpu'
 
-camera, lights, surface = getSceneLocations(batch=1)
-
-samples = getRealSamples('realSamples1')
+camera, lights, surface = getScene(batch=1)
 
 gfm = getGfm()
 L= 0
@@ -45,14 +46,14 @@ y = np.linspace(0, len(height_profile_y_gfm) - 1, len(height_profile_y_gfm))
 ax1.plot(x, height_profile_x_gfm, label='gfm', color='red')
 ax1.plot(x, height_profile_x_true, label='ground truth', color='green')
 ax1.plot(x, height_profile_x_pred, label='prediction', color='blue')
-ax1.set(xlabel='pixels', ylabel='height')
+ax1.set(xlabel='pixels')
 ax1.legend()
 ax1.set_title('profile in x-direction')
 
 ax2.plot(y, height_profile_y_gfm, label='gfm', color='red')
 ax2.plot(y, height_profile_y_true, label='ground truth', color='green')
 ax2.plot(y, height_profile_y_pred, label='prediction', color='blue')
-ax2.set(xlabel='pixels', ylabel='height')
+ax2.set(xlabel='pixels')
 ax2.legend()
 ax2.set_title('profile in y-direction')
 
@@ -86,9 +87,8 @@ LP.hovercolor = 'red'
 
 itbox = fig.add_axes([0.2, 0.01, 0.3, 0.075])
 iterations = TextBox(itbox, "Iterations", textalignment="center")
-iterations.set_val("50000")
+iterations.set_val(its)
 
-path_results = os.path.join('results', 'optimization', '0')
 res_path_box = fig.add_axes([0.2, 0.09, 0.65, 0.05])
 PathResults = TextBox(res_path_box, "Folder results", textalignment="center")
 PathResults.set_val(path_results)
@@ -108,14 +108,14 @@ def update(val):
     ax1.lines[2].remove()
 
     ax1.plot(x, height_profile_x_pred, label='prediction', color='blue')
-    ax1.set(xlabel='pixels', ylabel='height')
+    ax1.set(xlabel='pixels')
     ax1.legend()
     ax1.set_title('profile in x-direction')
 
     ax2.lines[2].remove()
 
     ax2.plot(y, height_profile_y_pred, label='prediction', color='blue')
-    ax2.set(xlabel='pixels', ylabel='height')
+    ax2.set(xlabel='pixels')
     ax2.legend()
     ax2.set_title('profile in y-direction')
 
@@ -139,7 +139,7 @@ def update_L(val):
     ax1.plot(x, height_profile_x_gfm, label='gfm', color='red')
     ax1.plot(x, height_profile_x_true, label='ground truth', color='green')
     ax1.plot(x, height_profile_x_pred, label='prediction', color='blue')
-    ax1.set(xlabel='pixels', ylabel='height')
+    ax1.set(xlabel='pixels')
     ax1.legend()
     ax1.set_title('profile in x-direction')
 
@@ -150,7 +150,7 @@ def update_L(val):
     ax2.plot(y, height_profile_y_gfm, label='gfm', color='red')
     ax2.plot(y, height_profile_y_true, label='ground truth', color='green')
     ax2.plot(y, height_profile_y_pred, label='prediction', color='blue')
-    ax2.set(xlabel='pixels', ylabel='height')
+    ax2.set(xlabel='pixels')
     ax2.legend()
     ax2.set_title('profile in y-direction')
 

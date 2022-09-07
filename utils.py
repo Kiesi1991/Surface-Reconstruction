@@ -187,11 +187,12 @@ def getScene(batch=1, H=386, W=516):
 
     return camera, lights, surface
 
-def getHeightProfile(surface):
+def getHeightProfile(surface, divide_by_mean = True):
     '''
     returns a height profile in x- and y-direction, given a surface matrix. If more than one samples (batches) available, the first sample is chosen.
     Profile in x-direction corresponds to the middle row of the surface matrix and the profile in y-direction is the middle column.
     :param surface: (B, H, W), surface matrix in pixel-to-height representation, every entry contains a height value in z-direction
+    :param divide_by_mean: (boolean), if True return height profiles diveded by mean value.
     :return: (tuple) -> (height_profile_x, height_profile_y)
     height_profile_x: (W,), middle row numpy array of surface matrix
     height_profile_y: (H,), middle column numpy array of surface matrix
@@ -199,7 +200,10 @@ def getHeightProfile(surface):
     B,H,W = surface.shape
     height_profile_x = surface.cpu().detach().numpy()[0, H//2, :]
     height_profile_y = surface.cpu().detach().numpy()[0, :, W//2]
-    return height_profile_x / height_profile_x.mean(), height_profile_y / height_profile_y.mean()
+    if divide_by_mean:
+        return height_profile_x / height_profile_x.mean(), height_profile_y / height_profile_y.mean()
+    else:
+        return height_profile_x, height_profile_y
 
 def getLightNumeration(level):
     '''
