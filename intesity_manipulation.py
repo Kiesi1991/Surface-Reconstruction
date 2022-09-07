@@ -7,7 +7,7 @@ from optimize_parameters import optimizeParameters
 from matplotlib.widgets import TextBox
 from torch.nn.parameter import Parameter
 
-rough, diffuse, relectance = 0.5, 0.5, 0.5
+rough, diffuse, relectance = 0.2, 0.2, 0.2
 
 if torch.cuda.is_available():
     device = 'cuda'

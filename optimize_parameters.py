@@ -38,7 +38,7 @@ def optimizeParameters(path_real_samples='realSamples', path_results=os.path.joi
                                rough=rough, diffuse=diffuse, reflectance=reflectance)
     # transfer model parameters to "device"
     model.to(device)
-    # define loss function an optimizer
+    # define loss function and optimizer
     mse = torch.nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=0.0)
     # calculate amount of active lights -> depends on selected lights
@@ -60,7 +60,7 @@ def optimizeParameters(path_real_samples='realSamples', path_results=os.path.joi
                 model.lights.requires_grad = True
             else:
                 model.lights.requires_grad = False
-            # calculate errors between real cabin-cap images and predictions from Filament renderer
+            # calculate errors between real cabin-cap images and predictions from Filament renderer + apply regularisation
             err = mse(pred[..., start:end+1].to(device), samples[..., start:end+1].to(device)) + lam * distance_err
             model.errs.append(err.item())
             # set gradients to zero and apply optimization step
