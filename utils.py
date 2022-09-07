@@ -128,7 +128,7 @@ def createNextFolder(path):
 def getRealSamples(path):
     '''
     :param path: (string), directory path to real cabin cap samples, path to a folder with "S" subfolders.
-    :return: (S, 1, H, W, L), pytorch tensor - data from cabin cap image samples.
+    :return: (B, 1, H, W, L), pytorch tensor - data from cabin cap image samples.
     '''
     folders = glob.glob(os.path.join(path, '*'), recursive=True)
 
@@ -161,7 +161,7 @@ def getRealSamples(path):
             real_samples = torch.cat((real_samples, samples.unsqueeze(0)), dim=0)
     return real_samples.unsqueeze(1)
 
-def getSceneLocations(batch=1, H=386, W=516):
+def getScene(batch=1, H=386, W=516):
     '''
     returns a scene for a Freesurf sensor with a flat (zero height) surface matrix.
     :param batch: (int), batchsize - B flat surfaces will be created

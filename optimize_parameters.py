@@ -31,7 +31,7 @@ def optimizeParameters(path_real_samples='realSamples', path_results=os.path.joi
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     samples = getRealSamples(path_real_samples)
     start, end = getLightNumeration(selected_lights)
-    camera, lights, surface = getSceneLocations(batch=samples.shape[0])
+    camera, lights, surface = getScene(batch=samples.shape[0])
     path = createNextFolder(path_results)
     # define optimization model
     model = OptimizeParameters(surface, (lights, para_lights), camera,
