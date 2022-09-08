@@ -134,7 +134,9 @@ class OptimizeParameters(nn.Module):
         output = filament_renderer(surface, self.camera.to(device), self.lights,
                                  rough=self.rough, diffuse=self.diffuse, reflectance=self.reflectance)
         if self.shadow is None:
-            self.shadow = (self.gfm.to(device) / output).detach()
+            output0 = filament_renderer(surface, self.camera.to(device), self.lights,
+                                       rough=0.5, diffuse=0.5, reflectance=0.5)
+            self.shadow = (self.gfm.to(device) / output0).detach()
         if self.shadowing:
             return (output * self.shadow).squeeze(-1)
         else:

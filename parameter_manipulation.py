@@ -8,7 +8,7 @@ from matplotlib.widgets import TextBox
 from torch.nn.parameter import Parameter
 
 rough, diffuse, relectance = 0.8, 0.8, 0.8
-path_results = os.path.join('results', 'optimization', '1')
+path_results = os.path.join('results', 'optimization', '3')
 its = "50000"
 samples = getRealSamples('realSamples1')
 

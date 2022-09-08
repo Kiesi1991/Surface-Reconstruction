@@ -61,7 +61,7 @@ def optimizeParameters(path_real_samples='realSamples', path_results=os.path.joi
             else:
                 model.lights.requires_grad = False
             # calculate errors between real cabin-cap images and predictions from Filament renderer + apply regularisation
-            err = mse(torch.exp(pred[..., start:end+1].to(device)), torch.exp(samples[..., start:end+1].to(device))) + lam * distance_err
+            err = mse(pred[..., start:end+1].to(device), samples[..., start:end+1].to(device)) + lam * distance_err
             model.errs.append(err.item())
             # set gradients to zero and apply optimization step
             optimizer.zero_grad()
