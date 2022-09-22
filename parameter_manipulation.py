@@ -2,14 +2,14 @@ import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider, Button, RadioButtons
 import matplotlib
 from models import OptimizeParameters
-from utils import *
 from optimize_parameters import optimizeParameters
 from matplotlib.widgets import TextBox
 from torch.nn.parameter import Parameter
 from shaders import *
+from utils import *
 
 rough, diffuse, relectance = 0.8, 0.8, 0.8
-path_results = os.path.join('results', 'optimization', '3')
+path_results = os.path.join('results', 'optimization', '4')
 its = "50000"
 samples = getRealSamples('realSamples1')
 
@@ -23,8 +23,9 @@ camera, lights, surface = getScene(batch=1)
 gfm = getGfm()
 L= 0
 
-shadow = torch.load(os.path.join('results', 'optimization', '3', '6', 'shadow.pt'))
+shadow = torch.load(os.path.join('results', 'optimization', '3', '4', 'shadow.pt'))
 SynSamples = SyntheticSamples(samples, lights, camera, shadow)
+syn_samples = SynSamples.forward().squeeze(-1)
 
 model = OptimizeParameters(surface, (lights,False), camera,
                                shadowing=False,
@@ -105,20 +106,33 @@ def update(val):
     model.diffuse = Parameter(torch.tensor(Dslider.val))
     pred = model.forward()
 
+
+    if SynB.value:
+        height_profile_x_true, height_profile_y_true = getHeightProfile(syn_samples[0, ..., int(radio.value_selected)])
+    else:
+        height_profile_x_true, height_profile_y_true = getHeightProfile(samples[0, ..., int(radio.value_selected)])
     height_profile_x_pred, height_profile_y_pred = getHeightProfile(pred[0, ..., int(radio.value_selected)])
 
     x = np.linspace(0, len(height_profile_x_gfm) - 1, len(height_profile_x_gfm))
     y = np.linspace(0, len(height_profile_y_gfm) - 1, len(height_profile_y_gfm))
 
     ax1.lines[2].remove()
+    ax1.lines[1].remove()
+    ax1.lines[0].remove()
 
+    ax1.plot(x, height_profile_x_gfm, label='gfm', color='red')
+    ax1.plot(x, height_profile_x_true, label='ground truth', color='green')
     ax1.plot(x, height_profile_x_pred, label='prediction', color='blue')
     ax1.set(xlabel='pixels')
     ax1.legend()
     ax1.set_title('profile in x-direction')
 
     ax2.lines[2].remove()
+    ax2.lines[1].remove()
+    ax2.lines[0].remove()
 
+    ax2.plot(y, height_profile_y_gfm, label='gfm', color='red')
+    ax2.plot(y, height_profile_y_true, label='ground truth', color='green')
     ax2.plot(y, height_profile_y_pred, label='prediction', color='blue')
     ax2.set(xlabel='pixels')
     ax2.legend()
@@ -129,9 +143,11 @@ def update(val):
 def update_L(val):
     L = int(val)
     pred = model.forward()
-
+    if SynB.value:
+        height_profile_x_true, height_profile_y_true = getHeightProfile(syn_samples[0, ..., L])
+    else:
+        height_profile_x_true, height_profile_y_true = getHeightProfile(samples[0, ..., L])
     height_profile_x_gfm, height_profile_y_gfm = getHeightProfile(gfm[0, ..., L, 0])
-    height_profile_x_true, height_profile_y_true = getHeightProfile(samples[0, ..., L])
     height_profile_x_pred, height_profile_y_pred = getHeightProfile(pred[0, ..., L])
 
     x = np.linspace(0, len(height_profile_x_gfm) - 1, len(height_profile_x_gfm))
@@ -178,10 +194,9 @@ def start_optimization(val):
 
     plt.close()
 
-    parameters = optimizeParameters(path_real_samples='realSamples1', path_results=path_results, para_lights=LP.value,
-                                    iterations=its,
+    parameters = optimizeParameters(syn_samples if SynB.value else samples, path_results=path_results, para_lights=LP.value,
+                                    iterations=its, synthetic=SynB.value, synthetic_model=SynSamples,
                                     rough=rough, diffuse=diffuse, reflectance=reflactance, selected_lights=selected_lights)
-
 
 def change_synthetic(val):
     if SynB.value:

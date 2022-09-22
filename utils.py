@@ -312,7 +312,7 @@ def createSurface(resolution):
     o_var = np.random.normal(0, h*0.1, 1)[0]
     surface -= ((surface.max() / 2.0)+o_var)
 
-    return torch.from_numpy(surface) - torch.mean(torch.from_numpy(surface))
+    return (torch.from_numpy(surface) - torch.mean(torch.from_numpy(surface))).float()
 
 def random_walk(size, p, p_var):
     length = np.random.randint(100, size=1)[0] + 1

@@ -167,7 +167,7 @@ class OptimizeParameters(nn.Module):
 
             plt.savefig(os.path.join(path, f'TrueRGB-{L}.png'))
             plt.close()
-    def plotDiagrams(self, plot_every, path):
+    def plotDiagrams(self, plot_every, path, synthetic_model=None):
         '''
         plot
         angles.png -> image, where every pixel value demonstrates the angle between normal vector and a vector in z-direction (0, 0, 1),
@@ -183,7 +183,7 @@ class OptimizeParameters(nn.Module):
         '''
         device = self.surface.device
         self.l_to_origin.append(
-            torch.linalg.norm(self.lights_origin .cpu().detach() - self.lights.cpu().detach(), axis=-1).tolist())
+            torch.linalg.norm((synthetic_model.lights if (synthetic_model != None) else self.lights_origin).cpu().detach() - self.lights.cpu().detach(), axis=-1).tolist())
         self.l_to_zero.append(torch.linalg.norm(self.lights.cpu().detach(), axis=-1).tolist())
 
         x = np.linspace(0, len(self.l_to_origin) - 1, len(self.l_to_origin)) * plot_every
@@ -218,6 +218,8 @@ class OptimizeParameters(nn.Module):
         plt.close()
 
         height_profile_x_pred, height_profile_y_pred = getHeightProfile(self.surface, divide_by_mean=False)
+        if synthetic_model != None:
+            height_profile_x_syn, height_profile_y_syn = getHeightProfile(synthetic_model.surface, divide_by_mean=False)
 
         x = np.linspace(0, len(height_profile_x_pred) - 1, len(height_profile_x_pred))
         y = np.linspace(0, len(height_profile_y_pred) - 1, len(height_profile_y_pred))
@@ -226,6 +228,7 @@ class OptimizeParameters(nn.Module):
         plt.subplot(1, 2, 1)
 
         plt.plot(x, height_profile_x_pred, label='prediction')
+        plt.plot(x, height_profile_x_syn, label='synthetic')
         plt.xlabel('pixels')
         plt.ylabel('height')
         plt.legend()
@@ -234,6 +237,7 @@ class OptimizeParameters(nn.Module):
         plt.subplot(1, 2, 2)
 
         plt.plot(y, height_profile_y_pred, label='prediction')
+        plt.plot(y, height_profile_y_syn, label='synthetic')
         plt.xlabel('pixels')
         plt.ylabel('height')
         plt.legend()
@@ -253,6 +257,10 @@ class OptimizeParameters(nn.Module):
         plt.close()
 
         x = np.linspace(0, len(self.roughs) - 1, len(self.roughs)) * plot_every
+        if synthetic_model != None:
+            plt.plot(x, [synthetic_model.rough]*len(self.roughs),  color='red', linestyle='dashed')
+            plt.plot(x, [synthetic_model.diffuse]*len(self.roughs),  color='green', linestyle='dashed')
+            plt.plot(x, [synthetic_model.reflectance]*len(self.roughs),  color='blue', linestyle='dashed')
         plt.plot(x, self.roughs, label='rough', color='red')
         plt.plot(x, self.diffuses, label='diffuse', color='green')
         plt.plot(x, self.reflectances, label='reflectance', color='blue')

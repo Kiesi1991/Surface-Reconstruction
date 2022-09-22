@@ -3,8 +3,8 @@ import statistics
 from utils import *
 from tqdm import tqdm
 
-def optimizeParameters(path_real_samples='realSamples', path_results=os.path.join('results', 'optimization'),
-                       lr=1e-4,
+def optimizeParameters(samples, path_results=os.path.join('results', 'optimization'),
+                       lr=1e-4, synthetic = False, synthetic_model=None,
                        iterations=50000, selected_lights='all levels', para_lights=True,
                        rough=0.5, diffuse=0.5, reflectance=0.5,
                        regularization_function='exp', lam = 0.000001):
@@ -29,7 +29,6 @@ def optimizeParameters(path_real_samples='realSamples', path_results=os.path.joi
     # preperations before starting optimization
     plot_every = iterations // 8
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    samples = getRealSamples(path_real_samples)
     start, end = getLightNumeration(selected_lights)
     camera, lights, surface = getScene(batch=samples.shape[0])
     path = createNextFolder(path_results)
@@ -82,7 +81,7 @@ def optimizeParameters(path_real_samples='realSamples', path_results=os.path.joi
                 path2 = os.path.join(path, f'iteration-{iteration}')
 
                 model.plotImageComparism(samples, pred, path2)
-                model.plotDiagrams(plot_every, path)
+                model.plotDiagrams(plot_every, path, synthetic_model) if synthetic else model.plotDiagrams(plot_every, path)
 
                 model.createParametersFile(path2, selected_lights)
                 model.saveParameters(path)

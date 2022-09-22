@@ -60,7 +60,7 @@ class FilamentShading():
 class SyntheticSamples():
     def __init__(self, samples, lights, camera,
                  shadow,
-                 rough=0.5, diffuse=0.5, reflectance=0.5):
+                 rough=0.11, diffuse=0.19, reflectance=0.15):
         # scene parameters
         if torch.cuda.is_available():
             self.surface = createSurface(resolution=(samples.shape[2], samples.shape[3])).to('cuda').unsqueeze(0)
@@ -70,9 +70,9 @@ class SyntheticSamples():
         self.camera = camera
 
         # material parameters
-        self.rough = torch.tensor(rough + np.random.normal(0, 0.1))
-        self.diffuse = torch.tensor(diffuse + np.random.normal(0, 0.1))
-        self.reflectance = torch.tensor(reflectance + np.random.normal(0, 0.1))
+        self.rough = torch.tensor(rough + np.random.normal(0, 0.02))
+        self.diffuse = torch.tensor(diffuse + np.random.normal(0, 0.02))
+        self.reflectance = torch.tensor(reflectance + np.random.normal(0, 0.02))
 
         # shadow effects
         self.shadow = shadow
