@@ -6,6 +6,7 @@ from utils import *
 from optimize_parameters import optimizeParameters
 from matplotlib.widgets import TextBox
 from torch.nn.parameter import Parameter
+from shaders import *
 
 rough, diffuse, relectance = 0.8, 0.8, 0.8
 path_results = os.path.join('results', 'optimization', '3')
@@ -22,10 +23,14 @@ camera, lights, surface = getScene(batch=1)
 gfm = getGfm()
 L= 0
 
+shadow = torch.load(os.path.join('results', 'optimization', '3', '6', 'shadow.pt'))
+SynSamples = SyntheticSamples(samples, lights, camera, shadow)
+
 model = OptimizeParameters(surface, (lights,False), camera,
                                shadowing=False,
                                rough=rough, diffuse=diffuse, reflectance=relectance)
 model.eval()
+
 
 pred = model.forward()
 
@@ -203,7 +208,7 @@ Fslider.on_changed(update)
 Dslider.on_changed(update)
 radio.on_clicked(update_L)
 start.on_clicked(start_optimization)
-SynB.on_clicked(change_synthetic)
+synthetic_surface = SynB.on_clicked(change_synthetic)
 LP.on_clicked(change_light_parameter)
 
 plt.show()

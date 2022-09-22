@@ -1,7 +1,5 @@
 import torch
-
 from utils import *
-from filament_renderer import filament_renderer
 
 class PhongShading():
     def __init__(self,
@@ -57,4 +55,32 @@ class FilamentShading():
     def forward(self, surface):
         color = filament_renderer(surface, camera=self.camera, lights=self.lights, light_intensity=self.light_intensity, light_color=self.light_color, rough=self.rough, diffuse=self.diffuse, reflectance=self.reflectance, x=self.x, y=self.y).permute(0, 4, 2, 3, 1, 5)[None].squeeze(0).squeeze(-1).squeeze(-1)
         return color * self.shadow
+
+
+class SyntheticSamples():
+    def __init__(self, samples, lights, camera,
+                 shadow,
+                 rough=0.5, diffuse=0.5, reflectance=0.5):
+        # scene parameters
+        if torch.cuda.is_available():
+            self.surface = createSurface(resolution=(samples.shape[2], samples.shape[3])).to('cuda').unsqueeze(0)
+        else:
+            self.surface = createSurface(resolution=(samples.shape[2], samples.shape[3])).unsqueeze(0)
+        self.lights = lights + torch.normal(mean=0, std=0.2, size=lights.shape)
+        self.camera = camera
+
+        # material parameters
+        self.rough = torch.tensor(rough + np.random.normal(0, 0.1))
+        self.diffuse = torch.tensor(diffuse + np.random.normal(0, 0.1))
+        self.reflectance = torch.tensor(reflectance + np.random.normal(0, 0.1))
+
+        # shadow effects
+        self.shadow = shadow
+    def forward(self):
+
+        device = self.surface.device
+        surface = self.surface - torch.mean(self.surface)
+        output = filament_renderer(surface, self.camera.to(device), self.lights.to(device),
+                                 rough=self.rough, diffuse=self.diffuse, reflectance=self.reflectance)
+        return output * self.shadow
 
