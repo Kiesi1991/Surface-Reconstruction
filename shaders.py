@@ -70,9 +70,9 @@ class SyntheticSamples():
         self.camera = camera
 
         # material parameters
-        self.rough = torch.tensor(rough + np.random.normal(0, 0.02))
-        self.diffuse = torch.tensor(diffuse + np.random.normal(0, 0.02))
-        self.reflectance = torch.tensor(reflectance + np.random.normal(0, 0.02))
+        self.rough = rough + np.random.normal(0, 0.02)
+        self.diffuse = diffuse + np.random.normal(0, 0.02)
+        self.reflectance = reflectance + np.random.normal(0, 0.02)
 
         # shadow effects
         self.shadow = shadow

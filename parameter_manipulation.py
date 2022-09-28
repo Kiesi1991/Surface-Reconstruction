@@ -23,8 +23,12 @@ camera, lights, surface = getScene(batch=1)
 gfm = getGfm()
 L= 0
 
-shadow = torch.load(os.path.join('results', 'optimization', '3', '4', 'shadow.pt'))
-SynSamples = SyntheticSamples(samples, lights, camera, shadow)
+folder = os.path.join('results', 'optimization', '3', '4')
+shadow = torch.load(os.path.join(folder, 'shadow.pt'))
+rough_syn = torch.load(os.path.join(folder, 'rough.pt'))
+diffuse_syn = torch.load(os.path.join(folder, 'diffuse.pt'))
+reflectance_syn = torch.load(os.path.join(folder, 'reflectance.pt'))
+SynSamples = SyntheticSamples(samples, lights, camera, shadow, rough=rough_syn, diffuse=diffuse_syn, reflectance=reflectance_syn)
 syn_samples = SynSamples.forward().squeeze(-1)
 
 model = OptimizeParameters(surface, (lights,False), camera,
@@ -203,10 +207,12 @@ def change_synthetic(val):
         SynB.value=False
         SynB.color='red'
         SynB.hovercolor='green'
+        update(val)
     else:
         SynB.value=True
         SynB.color = 'green'
         SynB.hovercolor = 'red'
+        update(val)
 
 def change_light_parameter(val):
     if LP.value:
