@@ -3,10 +3,9 @@ import statistics
 from utils import *
 from tqdm import tqdm
 
-def optimizeParameters(samples, path_results=os.path.join('results', 'optimization'),
-                       lr=1e-4, synthetic = False, synthetic_model=None,
-                       iterations=50000, selected_lights='all levels', para_lights=True,
-                       rough=0.5, diffuse=0.5, reflectance=0.5,
+def optimizeParameters(model, path_results=os.path.join('results', 'optimization'),
+                       lr=1e-4,
+                       iterations=50000, selected_lights='all levels',
                        regularization_function='exp', lam = 0.000001):
     '''
     function, which perform optimization loop, apply plotting functions, initialize optimization model and store optimized parameters
@@ -30,11 +29,9 @@ def optimizeParameters(samples, path_results=os.path.join('results', 'optimizati
     plot_every = iterations // 8
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     start, end = getLightNumeration(selected_lights)
-    camera, lights, surface = getScene(batch=samples.shape[0])
     path = createNextFolder(path_results)
-    # define optimization model
-    model = OptimizeParameters(surface, (lights, para_lights), camera,
-                               rough=rough, diffuse=diffuse, reflectance=reflectance)
+    samples = model.create_synthetic_images() if model.synthetic else getRealSamples('realSamples1')
+    model.train()
     # transfer model parameters to "device"
     model.to(device)
     # define loss function and optimizer
@@ -46,7 +43,8 @@ def optimizeParameters(samples, path_results=os.path.join('results', 'optimizati
     for iteration in tqdm(range(iterations)):
             pred = model.forward()
             # apply regularisation to light positions
-            distance = torch.linalg.norm(lights.to(device) - model.lights, axis=-1)
+            light_origin = model.synthetic_lights if model.synthetic else model.lights_origin.to(device)
+            distance = torch.linalg.norm(light_origin.to(device) - model.lights, axis=-1)
             if regularization_function == 'exp':
                 distance_err = torch.exp(torch.sum(distance, dim=-1))/active_lights
             elif regularization_function == 'square':
@@ -55,7 +53,7 @@ def optimizeParameters(samples, path_results=os.path.join('results', 'optimizati
                 raise(f'Regularisation function is not defined: {regularization_function}!')
 
             # set requires_grad value for light positions to False for the first iteration till iteration is grater equal to plot_every
-            if iteration >= plot_every and para_lights:
+            if iteration >= plot_every:
                 model.lights.requires_grad = True
             else:
                 model.lights.requires_grad = False
@@ -81,7 +79,7 @@ def optimizeParameters(samples, path_results=os.path.join('results', 'optimizati
                 path2 = os.path.join(path, f'iteration-{iteration}')
 
                 model.plotImageComparism(samples, pred, path2)
-                model.plotDiagrams(plot_every, path, synthetic_model) if synthetic else model.plotDiagrams(plot_every, path)
+                model.plotDiagrams(plot_every, path)
 
                 model.createParametersFile(path2, selected_lights)
                 model.saveParameters(path)

@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import torch
 from matplotlib.widgets import Slider, Button, RadioButtons
 import matplotlib
 from models import OptimizeParameters
@@ -12,6 +13,7 @@ rough, diffuse, relectance = 0.8, 0.8, 0.8
 path_results = os.path.join('results', 'optimization', '4')
 its = "50000"
 samples = getRealSamples('realSamples1')
+L= 0
 
 if torch.cuda.is_available():
     device = 'cuda'
@@ -20,24 +22,16 @@ else:
 
 camera, lights, surface = getScene(batch=1)
 
-gfm = getGfm()
-L= 0
-
-folder = os.path.join('results', 'optimization', '3', '4')
-shadow = torch.load(os.path.join(folder, 'shadow.pt'))
-rough_syn = torch.load(os.path.join(folder, 'rough.pt'))
-diffuse_syn = torch.load(os.path.join(folder, 'diffuse.pt'))
-reflectance_syn = torch.load(os.path.join(folder, 'reflectance.pt'))
-SynSamples = SyntheticSamples(samples, lights, camera, shadow, rough=rough_syn, diffuse=diffuse_syn, reflectance=reflectance_syn)
-syn_samples = SynSamples.forward().squeeze(-1)
-
-model = OptimizeParameters(surface, (lights,False), camera,
+model = OptimizeParameters(surface.to(device), lights.to(device), camera.to(device),
                                shadowing=False,
                                rough=rough, diffuse=diffuse, reflectance=relectance)
 model.eval()
 
+syn_samples = model.create_synthetic_images()
+
 
 pred = model.forward()
+#pred *= torch.mean(model.gfm[0, ..., L, 0]) / torch.mean(pred[0, ..., L])
 
 matplotlib.use('TkAgg')
 
@@ -46,7 +40,7 @@ plt.rcParams["figure.autolayout"] = False
 fig, (ax1, ax2) = plt.subplots(1,2)
 plt.subplots_adjust(bottom=0.4)
 
-height_profile_x_gfm, height_profile_y_gfm = getHeightProfile(gfm[0,...,L,0])
+height_profile_x_gfm, height_profile_y_gfm = getHeightProfile(model.gfm[0,...,L,0])
 height_profile_x_true, height_profile_y_true = getHeightProfile(samples[0,...,L])
 height_profile_x_pred, height_profile_y_pred = getHeightProfile(pred[0,...,L])
 
@@ -109,13 +103,15 @@ def update(val):
     model.reflectance = Parameter(torch.tensor(Fslider.val))
     model.diffuse = Parameter(torch.tensor(Dslider.val))
     pred = model.forward()
-
+    #pred *= torch.mean(gfm[0, ..., int(radio.value_selected), 0]) / torch.mean(pred[0, ..., int(radio.value_selected)])
 
     if SynB.value:
         height_profile_x_true, height_profile_y_true = getHeightProfile(syn_samples[0, ..., int(radio.value_selected)])
     else:
         height_profile_x_true, height_profile_y_true = getHeightProfile(samples[0, ..., int(radio.value_selected)])
     height_profile_x_pred, height_profile_y_pred = getHeightProfile(pred[0, ..., int(radio.value_selected)])
+
+    height_profile_x_gfm, height_profile_y_gfm = getHeightProfile(model.gfm[0, ..., int(radio.value_selected), 0])
 
     x = np.linspace(0, len(height_profile_x_gfm) - 1, len(height_profile_x_gfm))
     y = np.linspace(0, len(height_profile_y_gfm) - 1, len(height_profile_y_gfm))
@@ -147,11 +143,12 @@ def update(val):
 def update_L(val):
     L = int(val)
     pred = model.forward()
+    #pred *= torch.mean(model.gfm[0, ..., L, 0]) / torch.mean(pred[0, ..., L])
     if SynB.value:
         height_profile_x_true, height_profile_y_true = getHeightProfile(syn_samples[0, ..., L])
     else:
         height_profile_x_true, height_profile_y_true = getHeightProfile(samples[0, ..., L])
-    height_profile_x_gfm, height_profile_y_gfm = getHeightProfile(gfm[0, ..., L, 0])
+    height_profile_x_gfm, height_profile_y_gfm = getHeightProfile(model.gfm[0, ..., L, 0])
     height_profile_x_pred, height_profile_y_pred = getHeightProfile(pred[0, ..., L])
 
     x = np.linspace(0, len(height_profile_x_gfm) - 1, len(height_profile_x_gfm))
@@ -184,10 +181,6 @@ def update_L(val):
 def start_optimization(val):
     print('1) optimize scene parameters for training')
 
-    rough = Rslider.val
-    diffuse = Dslider.val
-    reflactance = Fslider.val
-
     its = int(iterations.text) + 1
     path_results = PathResults.text
 
@@ -198,30 +191,36 @@ def start_optimization(val):
 
     plt.close()
 
-    parameters = optimizeParameters(syn_samples if SynB.value else samples, path_results=path_results, para_lights=LP.value,
-                                    iterations=its, synthetic=SynB.value, synthetic_model=SynSamples,
-                                    rough=rough, diffuse=diffuse, reflectance=reflactance, selected_lights=selected_lights)
+    model.lights = Parameter(model.lights) if LP.value else model.lights
+    model.shadowing = True
+
+    parameters = optimizeParameters(model, path_results=path_results, regularization_function='square',
+                                    iterations=its, selected_lights=selected_lights)
 
 def change_synthetic(val):
     if SynB.value:
         SynB.value=False
         SynB.color='red'
         SynB.hovercolor='green'
+        model.synthetic = False
         update(val)
     else:
         SynB.value=True
         SynB.color = 'green'
         SynB.hovercolor = 'red'
+        model.synthetic = True
         update(val)
 
 def change_light_parameter(val):
     if LP.value:
         LP.value=False
         LP.color='red'
+        model.lights.requires_grad = False
         LP.hovercolor='green'
     else:
         LP.value=True
         LP.color = 'green'
+        model.lights.requires_grad = True
         LP.hovercolor = 'red'
 
 Rslider.on_changed(update)

@@ -1,3 +1,4 @@
+import torch
 from torch import nn
 from torch.nn.parameter import Parameter
 import torchvision
@@ -83,11 +84,11 @@ class ResBlock(nn.Module):
 
 class OptimizeParameters(nn.Module):
     def __init__(self, surface, lights, camera,
-                 shadowing = True,
+                 shadowing = True, synthetic = False,
                  rough=0.5, diffuse=0.5, reflectance=0.5):
         '''
         initialization of class OptimizeParameters
-        :param surface: (B, H, W), surface matrix in pixel-to-height representation
+        :param surface: (B, H, W), zero height surface matrix in pixel-to-height representation
         :param lights: (tuple) -> (lights, boolean), lights: (L,3) light positions for all 12 light sources, boolean: if True lights is Parameter else is not a Parameter
         :param camera: (1, 1, 1, 1, 3), camera position
         :param shadowing: (boolean), if True shadow effects are applied to output of Filament renderer
@@ -99,8 +100,8 @@ class OptimizeParameters(nn.Module):
 
         # scene parameters
         self.surface = Parameter(surface)
-        self.lights_origin = lights[0]
-        self.lights = Parameter(lights[0]) if lights[1] else lights[0]
+        self.lights_origin = lights.clone()
+        self.lights = Parameter(lights)
         self.camera = camera
 
         # material parameters
@@ -113,7 +114,22 @@ class OptimizeParameters(nn.Module):
 
         # shadow effects
         self.shadowing = shadowing
-        self.shadow = None
+        pred0 = filament_renderer(surface, self.camera.to(surface.device), self.lights,
+                                    rough=0.2, diffuse=0.2, reflectance=0.2)
+        self.shadow = (self.gfm.to(surface.device) / pred0).detach().to(self.surface.device)
+
+        # material parameters for synthetic samples
+        self.rough_synthetic = 0.11 + np.random.normal(0, 0.02)
+        self.diffuse_synthetic = 0.19 + np.random.normal(0, 0.02)
+        self.reflectance_synthetic = 0.15 + np.random.normal(0, 0.02)
+
+        # create synthetic surface
+        self.synthetic_surface = createSurface(resolution=(surface.shape[1], surface.shape[2])).to(surface.device).unsqueeze(0)
+
+        # origin light positions for synthetic samples
+        self.synthetic_lights = lights + torch.normal(mean=0, std=0.2, size=lights.shape).to(surface.device)
+
+        self.synthetic = synthetic
 
         # relevant values for plotting
         self.errs = []
@@ -133,10 +149,21 @@ class OptimizeParameters(nn.Module):
         surface = self.surface - torch.mean(self.surface)
         output = filament_renderer(surface, self.camera.to(device), self.lights,
                                  rough=self.rough, diffuse=self.diffuse, reflectance=self.reflectance)
-        if self.shadow is None:
-            output0 = filament_renderer(surface, self.camera.to(device), self.lights,
-                                       rough=0.2, diffuse=0.2, reflectance=0.2)
-            self.shadow = (self.gfm.to(device) / output0).detach()
+        if self.shadowing:
+            return (output * self.shadow).squeeze(-1)
+        else:
+            return output.squeeze(-1)
+
+    @torch.no_grad()
+    def create_synthetic_images(self):
+        '''
+        forward rendering function with applying Filament Renderer.
+        :return: if shadowing=True the function outputs a rendered pytorch tensor multiplied with shadow effects, else the function outputs a rendered pytorch tensor without applying shadow effects.
+        '''
+        device = self.surface.device
+        synthetic_surface = self.synthetic_surface - torch.mean(self.synthetic_surface)
+        output = filament_renderer(synthetic_surface, self.camera.to(device), self.synthetic_lights,
+                                 rough=self.rough_synthetic, diffuse=self.diffuse_synthetic, reflectance=self.reflectance_synthetic)
         if self.shadowing:
             return (output * self.shadow).squeeze(-1)
         else:
@@ -167,7 +194,7 @@ class OptimizeParameters(nn.Module):
 
             plt.savefig(os.path.join(path, f'TrueRGB-{L}.png'))
             plt.close()
-    def plotDiagrams(self, plot_every, path, synthetic_model=None):
+    def plotDiagrams(self, plot_every, path):
         '''
         plot
         angles.png -> image, where every pixel value demonstrates the angle between normal vector and a vector in z-direction (0, 0, 1),
@@ -183,7 +210,7 @@ class OptimizeParameters(nn.Module):
         '''
         device = self.surface.device
         self.l_to_origin.append(
-            torch.linalg.norm((synthetic_model.lights if (synthetic_model != None) else self.lights_origin).cpu().detach() - self.lights.cpu().detach(), axis=-1).tolist())
+            torch.linalg.norm((self.synthetic_lights if self.synthetic else self.lights_origin).cpu().detach() - self.lights.cpu().detach(), axis=-1).tolist())
         self.l_to_zero.append(torch.linalg.norm(self.lights.cpu().detach(), axis=-1).tolist())
 
         x = np.linspace(0, len(self.l_to_origin) - 1, len(self.l_to_origin)) * plot_every
@@ -218,8 +245,8 @@ class OptimizeParameters(nn.Module):
         plt.close()
 
         height_profile_x_pred, height_profile_y_pred = getHeightProfile(self.surface, divide_by_mean=False)
-        if synthetic_model != None:
-            height_profile_x_syn, height_profile_y_syn = getHeightProfile(synthetic_model.surface, divide_by_mean=False)
+        if self.synthetic:
+            height_profile_x_syn, height_profile_y_syn = getHeightProfile(self.synthetic_surface, divide_by_mean=False)
 
         x = np.linspace(0, len(height_profile_x_pred) - 1, len(height_profile_x_pred))
         y = np.linspace(0, len(height_profile_y_pred) - 1, len(height_profile_y_pred))
@@ -228,7 +255,8 @@ class OptimizeParameters(nn.Module):
         plt.subplot(1, 2, 1)
 
         plt.plot(x, height_profile_x_pred, label='prediction')
-        plt.plot(x, height_profile_x_syn, label='synthetic')
+        if self.synthetic:
+            plt.plot(x, height_profile_x_syn, label='synthetic')
         plt.xlabel('pixels')
         plt.ylabel('height')
         plt.legend()
@@ -237,7 +265,8 @@ class OptimizeParameters(nn.Module):
         plt.subplot(1, 2, 2)
 
         plt.plot(y, height_profile_y_pred, label='prediction')
-        plt.plot(y, height_profile_y_syn, label='synthetic')
+        if self.synthetic:
+            plt.plot(y, height_profile_y_syn, label='synthetic')
         plt.xlabel('pixels')
         plt.ylabel('height')
         plt.legend()
@@ -257,10 +286,10 @@ class OptimizeParameters(nn.Module):
         plt.close()
 
         x = np.linspace(0, len(self.roughs) - 1, len(self.roughs)) * plot_every
-        if synthetic_model != None:
-            plt.plot(x, [synthetic_model.rough]*len(self.roughs),  color='red', linestyle='dashed')
-            plt.plot(x, [synthetic_model.diffuse]*len(self.roughs),  color='green', linestyle='dashed')
-            plt.plot(x, [synthetic_model.reflectance]*len(self.roughs),  color='blue', linestyle='dashed')
+        if self.synthetic:
+            plt.plot(x, [self.rough_synthetic]*len(self.roughs),  color='red', linestyle='dashed')
+            plt.plot(x, [self.diffuse_synthetic]*len(self.roughs),  color='green', linestyle='dashed')
+            plt.plot(x, [self.reflectance_synthetic]*len(self.roughs),  color='blue', linestyle='dashed')
         plt.plot(x, self.roughs, label='rough', color='red')
         plt.plot(x, self.diffuses, label='diffuse', color='green')
         plt.plot(x, self.reflectances, label='reflectance', color='blue')
