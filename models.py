@@ -40,8 +40,9 @@ class zPrediction(nn.Module):
 ###############################################
 
 class ResidualNetwork(nn.Module):
-    def __init__(self, layers=6):
+    def __init__(self, layers=6, crop=50):
         super().__init__()
+        self.crop = crop
         self.begin = nn.Conv2d(12, 12, kernel_size=1)
         self.res_blocks = nn.ModuleList([ResBlock(12) for i in range(layers)])
         self.head = nn.Conv2d(12, 1, kernel_size=3, padding=3//2)
@@ -52,6 +53,33 @@ class ResidualNetwork(nn.Module):
             x = block(x)
         x = self.head(x)
         return x.squeeze(1)
+
+    def plotImageComparism(self, samples, pred, path):
+        '''
+        save 12 images, which demonstrates the comparism of a real cabin-cap image with the prediction output of the Filament Renderer
+        :param samples: (B, 1, H, W, 12), real cabin-cap image samples in pytorch tensor type
+        :param pred: (B, 1, H, W, 12), prediction of cabin-cap samples (output of Filament renderer)
+        :param path: (str), directory path for saving images
+        :return: None
+        '''
+        crop = self.crop
+        for L in range(samples.shape[4]):
+            p = cv2.cvtColor(pred[0, L, crop:-crop, crop:-crop].cpu().detach().numpy(), cv2.COLOR_GRAY2RGB)
+            t = cv2.cvtColor(samples[0, 0, crop:-crop, crop:-crop, L].cpu().detach().numpy(), cv2.COLOR_GRAY2RGB)
+
+            plt.figure(figsize=(20, 10))
+            plt.subplot(1, 2, 1)
+            plt.imshow(t)
+            plt.title('real image')
+            plt.clim(0, 1.0)
+
+            plt.subplot(1, 2, 2)
+            plt.imshow(p)
+            plt.title('predicted image')
+            plt.clim(0, 1.0)
+
+            plt.savefig(os.path.join(path, f'Comparism-{L}.png'))
+            plt.close()
 
 class ResBlock(nn.Module):
     def __init__(self, in_ch):
