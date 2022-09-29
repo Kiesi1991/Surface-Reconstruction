@@ -194,7 +194,7 @@ def start_optimization(val):
     model.lights = Parameter(model.lights) if LP.value else model.lights
     model.shadowing = True
 
-    parameters = optimizeParameters(model, path_results=path_results, regularization_function='square',
+    parameters = optimizeParameters(model, path_results=path_results, regularization_function='abs',
                                     iterations=its, selected_lights=selected_lights)
 
 def change_synthetic(val):

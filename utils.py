@@ -221,7 +221,7 @@ def getLightNumeration(level):
     else:
         return 0, 11
 
-def get_scene_parameters(path):
+def getOptimizedParameters(path):
     surface = torch.load(os.path.join(path, 'surface.pt'))
     lights = torch.load(os.path.join(path, 'lights.pt'))
     camera = torch.load(os.path.join(path, 'camera.pt'))

@@ -9,7 +9,7 @@ import imageio
 from models import *
 
 from optimize_parameters import optimizeParameters
-from mainFilament import train_NN
+from training import train_NN
 from utils import get_scene_parameters, get_light_attenuation, get_height_profile
 import matplotlib.pyplot as plt
 

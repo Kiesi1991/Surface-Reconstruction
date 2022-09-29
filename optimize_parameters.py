@@ -1,3 +1,5 @@
+import torch
+
 from models import OptimizeParameters
 import statistics
 from utils import *
@@ -49,6 +51,8 @@ def optimizeParameters(model, path_results=os.path.join('results', 'optimization
                 distance_err = torch.exp(torch.sum(distance, dim=-1))/active_lights
             elif regularization_function == 'square':
                 distance_err = (torch.sum(distance, dim=-1) ** 2) / active_lights
+            elif regularization_function == 'abs':
+                distance_err = torch.abs(torch.sum(distance, dim=-1)) / active_lights
             else:
                 raise(f'Regularisation function is not defined: {regularization_function}!')
 

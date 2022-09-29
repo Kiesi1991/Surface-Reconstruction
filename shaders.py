@@ -29,32 +29,21 @@ class PhongShading():
         return (I / I.max()).float()
 
 class FilamentShading():
-    def __init__(self,
-                 camera, lights, light_intensity, intensity,
-                 rough,
-                 diffuse,
-                 reflectance,
-                 shadow,
-                 x=1.6083,
-                 y=1.20288,
-                 device='cpu'):
-        self.rough = torch.clamp(rough, min=0., max=1.).to(device)
-        self.diffuse = torch.clamp(diffuse, min=0., max=1.).to(device)
-        self.reflectance = torch.clamp(reflectance, min=0., max=1.).to(device)
-        #self. camera = camera.to(device)
-        self.camera = camera.to(device)
-        #self.lights = lights.to(device)
-        self.lights = lights.to(device)
-        self.device = device
-        self.x = x
-        self.y = y
-        self.light_intensity = light_intensity.to(device) * intensity.to(device)
-        self.light_color = torch.ones_like(self.light_intensity).to(device)
-
-        self.shadow = shadow.squeeze(0).squeeze(-1).permute(0,3,1,2)
+    def __init__(self,optimized_parameters):
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        self.optimized_surface = optimized_parameters['surface'].to(device)
+        self.camera = optimized_parameters['camera'].to(device)
+        self.lights = optimized_parameters['lights'].to(device)
+        # optimized material parameters
+        self.rough = optimized_parameters['rough'].to(device)
+        self.diffuse = optimized_parameters['diffuse'].to(device)
+        self.reflectance = optimized_parameters['reflectance'].to(device)
+        # shadow effects
+        self.shadow = optimized_parameters['shadow'].to(device)
     def forward(self, surface):
-        color = filament_renderer(surface, camera=self.camera, lights=self.lights, light_intensity=self.light_intensity, light_color=self.light_color, rough=self.rough, diffuse=self.diffuse, reflectance=self.reflectance, x=self.x, y=self.y).permute(0, 4, 2, 3, 1, 5)[None].squeeze(0).squeeze(-1).squeeze(-1)
-        return color * self.shadow
+        color = filament_renderer(surface, camera=self.camera, lights=self.lights,
+                                  rough=self.rough, diffuse=self.diffuse, reflectance=self.reflectance)
+        return (color * self.shadow).permute(0,4,2,3,1,5).squeeze(-1).squeeze(-1)
 
 
 class SyntheticSamples():
