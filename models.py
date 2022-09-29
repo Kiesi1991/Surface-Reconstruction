@@ -80,6 +80,57 @@ class ResidualNetwork(nn.Module):
 
             plt.savefig(os.path.join(path, f'Comparism-{L}.png'))
             plt.close()
+    def plotProfileDiagrams(self,optimized_surface, predicted_surface , path):
+        '''
+        plot
+        angles.png -> image, where every pixel value demonstrates the angle between normal vector and a vector in z-direction (0, 0, 1),
+        error.png -> error while optimization,
+        height-profile.png -> a height profile in x- and y-direction,
+        l_to_origin.png -> line diagram with 12 lines corresponding to the 12 light sources, every line illustrates the distance between origin (position in construction plan) and actual optimized position,
+        l_to_zero.png -> same as l_to_origin.png, but instead of origin distance is compared to position (0, 0, 0),
+        material-parameters.png -> change of material parameters while optimization
+        and save them to the given directory path.
+        :param plot_every: (int), plotting period
+        :param path: (str), string path, where plots are saved
+        :return: None
+        '''
+        crop = self.crop
+        height_profile_x_opt, height_profile_y_opt = getHeightProfile(optimized_surface[..., crop:-crop, crop:-crop], divide_by_mean=False)
+        height_profile_x_pred, height_profile_y_pred = getHeightProfile(predicted_surface[..., crop:-crop, crop:-crop], divide_by_mean=False)
+
+        x = np.linspace(0, len(height_profile_x_pred) - 1, len(height_profile_x_pred))
+        y = np.linspace(0, len(height_profile_y_pred) - 1, len(height_profile_y_pred))
+
+        plt.figure(figsize=(20, 10))
+        plt.subplot(1, 2, 1)
+
+        plt.plot(x, height_profile_x_pred, color='red', label='prediction')
+        plt.plot(x, height_profile_x_opt, color='red', linestyle='dashed')
+        plt.xlabel('pixels')
+        plt.ylabel('height')
+        plt.legend()
+        plt.title('profile in x-direction')
+
+        plt.subplot(1, 2, 2)
+
+        plt.plot(y, height_profile_y_pred, color='red', label='prediction')
+        plt.plot(y, height_profile_y_opt, color='red', linestyle='dashed')
+        plt.xlabel('pixels')
+        plt.ylabel('height')
+        plt.legend()
+        plt.title('profile in y-direction')
+
+        plt.savefig(os.path.join(path, f'height-profile.png'))
+        plt.close()
+
+    def plotErrorDiagram(self, errors, path):
+        x = np.linspace(0, len(errors) - 1, len(errors))
+        plt.plot(x, errors, label='errors')
+        plt.xlabel('iteration')
+        plt.ylabel('Error')
+        plt.legend()
+        plt.savefig(os.path.join(path, f'error.png'))
+        plt.close()
 
 class ResBlock(nn.Module):
     def __init__(self, in_ch):
