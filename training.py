@@ -54,14 +54,16 @@ def _forward(network: nn.Module, data: DataLoader, metric: callable):
         predicted_images = shader.forward((predicted_surface)) # (B,L,H,W)
         res = metric(predicted_images[..., crop:-crop, crop:-crop],
                      synthetic_images[..., crop:-crop, crop:-crop])
-        yield res
+        mse_surface = metric(synthetic_surface.to(device),
+                             predicted_surface.to(device))
+        yield res, mse_surface
 
 @torch.enable_grad()
 def update(network: nn.Module, data: DataLoader, loss: nn.Module,
            opt: torch.optim.Optimizer) -> list:
     network.train()
     errs = []
-    for iter, err in tqdm(enumerate(_forward(network, data, loss))):
+    for iter, (err, mse_surface) in tqdm(enumerate(_forward(network, data, loss))):
         errs.append(err.item())
 
         opt.zero_grad()

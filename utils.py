@@ -297,7 +297,8 @@ def createSurface(resolution):
         p_var = np.clip(np.random.normal(0, p * 0.8, 1)[0], 0.00001, 0.05)
         surface1 = np.zeros_like(surface)
         for _ in range(3):
-            surface1 += random_walk(size=resolution, p=p, p_var=p_var)
+            step_size = np.random.randint(100, size=1)[0] + 1
+            surface1 += random_walk(size=resolution,step_size=step_size, p=p, p_var=p_var)
         surface1 = np.clip(surface1, 0.0, 1.0)
         #surface1 = np.random.choice(np.array([1.0, 0.0]), size=resolution, p=[(p+p_var), 1.0 - (p+p_var)])
         surface1 = gaussian_filter(surface1, sigma=sigma+x_var+y_var, mode='reflect')
@@ -314,13 +315,13 @@ def createSurface(resolution):
 
     return (torch.from_numpy(surface) - torch.mean(torch.from_numpy(surface))).float()
 
-def random_walk(size, p, p_var):
+def random_walk(size, step_size, p, p_var):
     length = np.random.randint(100, size=1)[0] + 1
     mask = np.random.choice(np.array([1.0, 0.0]), size=size, p=[(p+p_var), 1.0 - (p+p_var)])
-    actions = np.random.randint(4, size=length)+1 # actions: 1=right, 2=left, 3=up, 4=down
+    actions = np.random.randint(4, size=step_size)+1 # actions: 1=right, 2=left, 3=up, 4=down
     h,w = size
-    surface = np.zeros((h+length*2,w+length*2))
-    surface[length:-length,length:-length] = mask
+    surface = np.zeros((h+step_size*2,w+step_size*2))
+    surface[step_size:-step_size,step_size:-step_size] = mask
     x = 0
     y = 0
     for action in actions:
@@ -332,6 +333,6 @@ def random_walk(size, p, p_var):
             y -= 1
         if action == 4:
             y += 1
-        surface[length+y:(h+length+y),length+x:(w+length+x)] += mask #kumlative summer, scatter, conv
+        surface[step_size+y:(h+step_size+y),step_size+x:(w+step_size+x)] += mask #kumlative summer, scatter, conv
 
-    return np.clip(surface[length:-length,length:-length], 0.0, 1.0)
+    return np.clip(surface[step_size:-step_size,step_size:-step_size], 0.0, 1.0)
