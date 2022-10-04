@@ -17,8 +17,9 @@ para_lights = True
 result = np.zeros((100,200))
 for _ in range(3):
     step_size = np.random.randint(100, size=1)[0] + 1
-    result += random_walk(size=(100,200), step_size=step_size, p=0.02, p_var=0)
+    result += random_walk(size=(100,200), p=0.02, l=0, h=100)
 
+result = createSurface(resolution=(100, 200))
 plt.imshow(result)
 plt.colorbar()
 plt.show()

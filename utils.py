@@ -295,12 +295,8 @@ def createSurface(resolution):
         x_var = np.random.normal(0, sigma*0.2, 1)[0]
         y_var = np.random.normal(0, sigma*0.2, 1)[0]
         p_var = np.clip(np.random.normal(0, p * 0.8, 1)[0], 0.00001, 0.05)
-        surface1 = np.zeros_like(surface)
-        for _ in range(3):
-            step_size = np.random.randint(100, size=1)[0] + 1
-            surface1 += random_walk(size=resolution,step_size=step_size, p=p, p_var=p_var)
+        surface1 = random_walk(size=resolution, p=p+p_var)
         surface1 = np.clip(surface1, 0.0, 1.0)
-        #surface1 = np.random.choice(np.array([1.0, 0.0]), size=resolution, p=[(p+p_var), 1.0 - (p+p_var)])
         surface1 = gaussian_filter(surface1, sigma=sigma+x_var+y_var, mode='reflect')
         surface1 /= surface1.max()
         surface1 *= (sigma+(x_var+y_var))
@@ -315,24 +311,37 @@ def createSurface(resolution):
 
     return (torch.from_numpy(surface) - torch.mean(torch.from_numpy(surface))).float()
 
-def random_walk(size, step_size, p, p_var):
-    length = np.random.randint(100, size=1)[0] + 1
-    mask = np.random.choice(np.array([1.0, 0.0]), size=size, p=[(p+p_var), 1.0 - (p+p_var)])
-    actions = np.random.randint(4, size=step_size)+1 # actions: 1=right, 2=left, 3=up, 4=down
-    h,w = size
-    surface = np.zeros((h+step_size*2,w+step_size*2))
-    surface[step_size:-step_size,step_size:-step_size] = mask
-    x = 0
-    y = 0
-    for action in actions:
-        if action == 1:
-            x += 1
-        if action == 2:
-            x -= 1
-        if action == 3:
-            y -= 1
-        if action == 4:
-            y += 1
-        surface[step_size+y:(h+step_size+y),step_size+x:(w+step_size+x)] += mask #kumlative summer, scatter, conv
-
-    return np.clip(surface[step_size:-step_size,step_size:-step_size], 0.0, 1.0)
+def random_walk(size, p, I=3, l=1, h=100):
+    '''
+    perform random walk method for bulky hill expansions.
+    :param size: (tuple) -> (H:int, W:int), size of output matrix
+    :param p: (float), percentage of starting points based on amount of pixels (H*W)
+    :param p: (int), number of loops (iterations)
+    :param l: (int), minimum length of step size S
+    :param h: (int), maximum length of step size S
+    :return: (numpy array) -> (H:int, W:int) output matrix
+    '''
+    result = np.zeros(size)
+    for _ in range(I):
+        # Return random integers from `low` (inclusive) to `high` (exclusive) for step size
+        S = np.random.randint(low=l, high=h, size=1)[0]
+        # create starting points for random walk
+        starting_points = np.random.choice(np.array([1.0, 0.0]), size=size, p=[p, 1.0 - p])
+        # sample S actions: 1=right, 2=left, 3=up, 4=down
+        actions = np.random.randint(4, size=S) + 1
+        h,w = size
+        surface = np.zeros((h+S*2, w+S*2))
+        surface[S:-S, S:-S] = starting_points
+        x, y = 0, 0
+        for action in actions:
+            if action == 1:
+                x += 1 # right
+            if action == 2:
+                x -= 1 # left
+            if action == 3:
+                y -= 1 # up
+            if action == 4:
+                y += 1 # down
+            surface[S+y:(h+S+y), S+x:(w+S+x)] += starting_points
+        result += np.clip(surface[S:-S, S:-S], 0.0, 1.0)
+    return result
