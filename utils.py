@@ -283,23 +283,15 @@ def filament_renderer(surface, camera, lights,
         dfg_multiscatter=None
     )
 
-def createSurface(resolution):
+def createSurface(resolution, sigmas = (2.5,5,10,15), p = 0.02, h = 0.01):
     surface = np.zeros(resolution)
-
-    p = 0.02
-    h = 0.01
-
-    sigmas = [2.5,5,10,15]
-
     for sigma in sigmas:
-        x_var = np.random.normal(0, sigma*0.2, 1)[0]
-        y_var = np.random.normal(0, sigma*0.2, 1)[0]
+        sigma_var = np.random.normal(0, sigma*0.4)
         p_var = np.clip(np.random.normal(0, p * 0.8, 1)[0], 0.00001, 0.05)
         surface1 = random_walk(size=resolution, p=p+p_var)
-        surface1 = np.clip(surface1, 0.0, 1.0)
-        surface1 = gaussian_filter(surface1, sigma=sigma+x_var+y_var, mode='reflect')
+        surface1 = gaussian_filter(surface1, sigma=sigma+sigma_var, mode='reflect')
         surface1 /= surface1.max()
-        surface1 *= (sigma+(x_var+y_var))
+        surface1 *= (sigma+sigma_var)
         surface += surface1
 
     surface -= surface.min()
@@ -329,7 +321,7 @@ def random_walk(size, p, I=3, l=1, h=100):
         starting_points = np.random.choice(np.array([1.0, 0.0]), size=size, p=[p, 1.0 - p])
         # sample S actions: 1=right, 2=left, 3=up, 4=down
         actions = np.random.randint(4, size=S) + 1
-        h,w = size
+        h, w = size
         surface = np.zeros((h+S*2, w+S*2))
         surface[S:-S, S:-S] = starting_points
         x, y = 0, 0
@@ -343,5 +335,5 @@ def random_walk(size, p, I=3, l=1, h=100):
             if action == 4:
                 y += 1 # down
             surface[S+y:(h+S+y), S+x:(w+S+x)] += starting_points
-        result += np.clip(surface[S:-S, S:-S], 0.0, 1.0)
-    return result
+        result += surface[S:-S, S:-S]
+    return np.clip(result, 0.0, 1.0)
