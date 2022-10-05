@@ -287,23 +287,20 @@ def createSurface(resolution, sigmas = (2.5,5,10,15), p = 0.02, h = 0.01):
     surface = np.zeros(resolution)
     for sigma in sigmas:
         sigma_var = np.random.normal(0, sigma*0.4)
-        p_var = np.clip(np.random.normal(0, p * 0.8, 1)[0], 0.00001, 0.05)
+        p_var = np.clip(np.random.normal(0, p * 0.8), 0.00001, 0.05)
         surface1 = random_walk(size=resolution, p=p+p_var)
         surface1 = gaussian_filter(surface1, sigma=sigma+sigma_var, mode='reflect')
         surface1 /= surface1.max()
-        surface1 *= (sigma+sigma_var)
+        #surface1 *= (sigma+sigma_var)
         surface += surface1
 
-    surface -= surface.min()
+    #surface -= surface.min()
     surface /= surface.max()
-    h_var = np.random.normal(0, h*0.2, 1)[0]
+    h_var = np.random.normal(0, h*0.2)
     surface *= (h+h_var)
-    o_var = np.random.normal(0, h*0.1, 1)[0]
-    surface -= ((surface.max() / 2.0)+o_var)
-
     return (torch.from_numpy(surface) - torch.mean(torch.from_numpy(surface))).float()
 
-def random_walk(size, p, I=3, l=1, h=100):
+def random_walk(size, p, I=3, l=1, h=50):
     '''
     perform random walk method for bulky hill expansions.
     :param size: (tuple) -> (H:int, W:int), size of output matrix

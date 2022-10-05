@@ -78,16 +78,24 @@ SelectedLights = RadioButtons(selected_lights, ('all levels', 'level 1', 'level 
 axstart = plt.axes([0.55, 0.01, 0.3, 0.075])
 start = Button(axstart, '->Start Optimization<-', color='yellow')
 
-syn = plt.axes([0.6, 0.16, 0.25, 0.05])
+syn = plt.axes([0.6, 0.16, 0.12, 0.05])
 SynB = Button(syn, 'Synthetic', color='red')
 SynB.__setattr__('value', False)
 SynB.hovercolor = 'green'
+
+new_syn = plt.axes([0.725, 0.16, 0.12, 0.05])
+Ns = Button(new_syn, 'new', color='blue')
+Ns.hovercolor = 'gray'
 
 para_lights = plt.axes([0.6, 0.22, 0.25, 0.05])
 LP = Button(para_lights, 'lights are paramerters', color='green')
 LP.__setattr__('value', True)
 LP.hovercolor = 'red'
 
+image_view = plt.axes([0.8, 0.30, 0.1, 0.04]) #[left, bottom, width, height]
+IV = Button(image_view, 'image view', color='red')
+IV.__setattr__('value', False)
+IV.hovercolor = 'green'
 
 itbox = fig.add_axes([0.2, 0.01, 0.3, 0.075])
 iterations = TextBox(itbox, "Iterations", textalignment="center")
@@ -103,7 +111,7 @@ def update(val):
     model.reflectance = Parameter(torch.tensor(Fslider.val))
     model.diffuse = Parameter(torch.tensor(Dslider.val))
     pred = model.forward()
-    #pred *= torch.mean(gfm[0, ..., int(radio.value_selected), 0]) / torch.mean(pred[0, ..., int(radio.value_selected)])
+    syn_samples = model.create_synthetic_images()
 
     if SynB.value:
         height_profile_x_true, height_profile_y_true = getHeightProfile(syn_samples[0, ..., int(radio.value_selected)])
@@ -127,54 +135,35 @@ def update(val):
     ax1.legend()
     ax1.set_title('profile in x-direction')
 
-    ax2.lines[2].remove()
-    ax2.lines[1].remove()
-    ax2.lines[0].remove()
+    try:
+        ax2.lines[2].remove()
+        ax2.lines[1].remove()
+        ax2.lines[0].remove()
+    except: pass
 
-    ax2.plot(y, height_profile_y_gfm, label='gfm', color='red')
-    ax2.plot(y, height_profile_y_true, label='ground truth', color='green')
-    ax2.plot(y, height_profile_y_pred, label='prediction', color='blue')
-    ax2.set(xlabel='pixels')
-    ax2.legend()
-    ax2.set_title('profile in y-direction')
+    try: ax2.images[0].remove()
+    except: pass
 
-    fig.canvas.draw_idle()
-
-def update_L(val):
-    L = int(val)
-    pred = model.forward()
-    #pred *= torch.mean(model.gfm[0, ..., L, 0]) / torch.mean(pred[0, ..., L])
-    if SynB.value:
-        height_profile_x_true, height_profile_y_true = getHeightProfile(syn_samples[0, ..., L])
+    if IV.value:
+        ax2.set_title('image sample')
+        ax2.imshow(syn_samples[0, 0, ..., int(radio.value_selected)].cpu().detach().numpy() if SynB.value
+                   else samples[0, 0, ..., int(radio.value_selected)].cpu().detach().numpy())
+        try: ax2.get_legend().remove()
+        except: pass
     else:
-        height_profile_x_true, height_profile_y_true = getHeightProfile(samples[0, ..., L])
-    height_profile_x_gfm, height_profile_y_gfm = getHeightProfile(model.gfm[0, ..., L, 0])
-    height_profile_x_pred, height_profile_y_pred = getHeightProfile(pred[0, ..., L])
+        ax2.plot(y, height_profile_y_gfm, label='gfm', color='red')
+        ax2.plot(y, height_profile_y_true, label='ground truth', color='green')
+        ax2.plot(y, height_profile_y_pred, label='prediction', color='blue')
+        ax2.set(xlabel='pixels')
+        ax2.legend()
+        ax2.set_title('profile in y-direction')
 
-    x = np.linspace(0, len(height_profile_x_gfm) - 1, len(height_profile_x_gfm))
-    y = np.linspace(0, len(height_profile_y_gfm) - 1, len(height_profile_y_gfm))
-
-    ax1.lines[2].remove()
-    ax1.lines[1].remove()
-    ax1.lines[0].remove()
-
-    ax1.plot(x, height_profile_x_gfm, label='gfm', color='red')
-    ax1.plot(x, height_profile_x_true, label='ground truth', color='green')
-    ax1.plot(x, height_profile_x_pred, label='prediction', color='blue')
-    ax1.set(xlabel='pixels')
-    ax1.legend()
-    ax1.set_title('profile in x-direction')
-
-    ax2.lines[2].remove()
-    ax2.lines[1].remove()
-    ax2.lines[0].remove()
-
-    ax2.plot(y, height_profile_y_gfm, label='gfm', color='red')
-    ax2.plot(y, height_profile_y_true, label='ground truth', color='green')
-    ax2.plot(y, height_profile_y_pred, label='prediction', color='blue')
-    ax2.set(xlabel='pixels')
-    ax2.legend()
-    ax2.set_title('profile in y-direction')
+    # recompute the ax.dataLim
+    ax1.relim()
+    ax2.relim()
+    # update ax.viewLim using the new dataLim
+    ax1.autoscale_view()
+    ax2.autoscale_view()
 
     fig.canvas.draw_idle()
 
@@ -223,12 +212,26 @@ def change_light_parameter(val):
         model.lights.requires_grad = True
         LP.hovercolor = 'red'
 
+def new_syn_surface(val):
+    model.synthetic_surface = createSurface(resolution=(surface.shape[1], surface.shape[2])).to(device).unsqueeze(0)
+    update(val)
+
+def change_view(val):
+    if not IV.value:
+        IV.value = True
+        IV.color = 'green'
+    else:
+        print('set image view off is not possible!')
+    update(val)
+
 Rslider.on_changed(update)
 Fslider.on_changed(update)
 Dslider.on_changed(update)
-radio.on_clicked(update_L)
+radio.on_clicked(update)
 start.on_clicked(start_optimization)
 synthetic_surface = SynB.on_clicked(change_synthetic)
+Ns.on_clicked(new_syn_surface)
+IV.on_clicked(change_view)
 LP.on_clicked(change_light_parameter)
 
 plt.show()
