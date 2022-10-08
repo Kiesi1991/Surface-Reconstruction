@@ -57,7 +57,7 @@ def optimizeParameters(model, path_results=os.path.join('results', 'optimization
                 raise(f'Regularisation function is not defined: {regularization_function}!')
 
             # set requires_grad value for light positions to False for the first iteration till iteration is grater equal to plot_every
-            if iteration >= plot_every:
+            if iteration >= 100:#plot_every:
                 model.lights.requires_grad = True
             else:
                 model.lights.requires_grad = False

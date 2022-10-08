@@ -187,7 +187,7 @@ def getScene(batch=1, H=386, W=516):
 
     return camera, lights, surface
 
-def getHeightProfile(surface, divide_by_mean = True):
+def getHeightProfile(surface, divide_by_mean = False):
     '''
     returns a height profile in x- and y-direction, given a surface matrix. If more than one samples (batches) available, the first sample is chosen.
     Profile in x-direction corresponds to the middle row of the surface matrix and the profile in y-direction is the middle column.
@@ -283,24 +283,24 @@ def filament_renderer(surface, camera, lights,
         dfg_multiscatter=None
     )
 
-def createSurface(resolution, sigmas = (2.5,5,10,15), p = 0.02, h = 0.01):
+def createSurface(resolution, sigmas = [5], p = 0.001, H = 0.01, I=5, l=1, h=50):
     surface = np.zeros(resolution)
     for sigma in sigmas:
-        sigma_var = np.random.normal(0, sigma*0.4)
-        p_var = np.clip(np.random.normal(0, p * 0.8), 0.00001, 0.05)
-        surface1 = random_walk(size=resolution, p=p+p_var)
+        sigma_var = 0#np.random.normal(0, sigma*0.4)
+        p_var = 0#np.clip(np.random.normal(0, p * 0.8), 0.00001, 0.05)
+        surface1 = random_walk(resolution, p+p_var, I, l, h)
         surface1 = gaussian_filter(surface1, sigma=sigma+sigma_var, mode='reflect')
         surface1 /= surface1.max()
-        #surface1 *= (sigma+sigma_var)
+        surface1 *= (sigma+sigma_var)
         surface += surface1
 
     #surface -= surface.min()
     surface /= surface.max()
-    h_var = np.random.normal(0, h*0.2)
-    surface *= (h+h_var)
+    h_var = 0#np.random.normal(0, h*0.2)
+    surface *= (H+h_var)
     return (torch.from_numpy(surface) - torch.mean(torch.from_numpy(surface))).float()
 
-def random_walk(size, p, I=3, l=1, h=50):
+def random_walk(size, p, I, l, h):
     '''
     perform random walk method for bulky hill expansions.
     :param size: (tuple) -> (H:int, W:int), size of output matrix
@@ -313,7 +313,7 @@ def random_walk(size, p, I=3, l=1, h=50):
     result = np.zeros(size)
     for _ in range(I):
         # Return random integers from `low` (inclusive) to `high` (exclusive) for step size
-        S = np.random.randint(low=l, high=h, size=1)[0]
+        S = np.random.randint(low=l, high=h)
         # create starting points for random walk
         starting_points = np.random.choice(np.array([1.0, 0.0]), size=size, p=[p, 1.0 - p])
         # sample S actions: 1=right, 2=left, 3=up, 4=down

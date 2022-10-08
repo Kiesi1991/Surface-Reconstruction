@@ -226,10 +226,12 @@ class OptimizeParameters(nn.Module):
         '''
         device = self.surface.device
         surface = self.surface - torch.mean(self.surface)
-        output = filament_renderer(surface, self.camera.to(device), self.lights,
-                                 rough=self.rough, diffuse=self.diffuse, reflectance=self.reflectance)
+        output = filament_renderer(surface.to(device), self.camera.to(device), self.lights.to(device),
+                                 rough=self.rough.to(device), diffuse=self.diffuse.to(device), reflectance=self.reflectance.to(device))
+
+        return (output * self.shadow.to(device)).squeeze(-1)
         if self.shadowing:
-            return (output * self.shadow).squeeze(-1)
+            return (output * self.shadow.to(device)).squeeze(-1)
         else:
             return output.squeeze(-1)
 
@@ -241,7 +243,7 @@ class OptimizeParameters(nn.Module):
         '''
         device = self.surface.device
         synthetic_surface = self.synthetic_surface - torch.mean(self.synthetic_surface)
-        output = filament_renderer(synthetic_surface, self.camera.to(device), self.synthetic_lights,
+        output = filament_renderer(synthetic_surface, self.camera.to(device), self.synthetic_lights.to(device),
                                  rough=self.rough_synthetic, diffuse=self.diffuse_synthetic, reflectance=self.reflectance_synthetic)
 
         return (output * self.shadow).squeeze(-1)

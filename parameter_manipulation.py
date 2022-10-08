@@ -29,9 +29,7 @@ model.eval()
 
 syn_samples = model.create_synthetic_images()
 
-
 pred = model.forward()
-#pred *= torch.mean(model.gfm[0, ..., L, 0]) / torch.mean(pred[0, ..., L])
 
 matplotlib.use('TkAgg')
 
@@ -75,19 +73,18 @@ radio = RadioButtons(rax, ('0','1','2','3','4','5','6','7','8','9','10','11'))
 selected_lights = plt.axes([0.01, 0.01, 0.06, 0.3], facecolor=axcolor) #[left, bottom, width, height]
 SelectedLights = RadioButtons(selected_lights, ('all levels', 'level 1', 'level 2', 'level 3', 'level 2+3'))
 
-axstart = plt.axes([0.55, 0.01, 0.3, 0.075])
+axstart = plt.axes([0.6, 0.01, 0.3, 0.075])
 start = Button(axstart, '->Start Optimization<-', color='yellow')
 
-syn = plt.axes([0.6, 0.16, 0.12, 0.05])
-SynB = Button(syn, 'Synthetic', color='red')
+syn = plt.axes([0.6, 0.16, 0.145, 0.05])
+SynB = Button(syn, 'real', color='white')
 SynB.__setattr__('value', False)
-SynB.hovercolor = 'green'
 
-new_syn = plt.axes([0.725, 0.16, 0.12, 0.05])
-Ns = Button(new_syn, 'new', color='blue')
+new_syn = plt.axes([0.9-0.145, 0.16, 0.145, 0.05])
+Ns = Button(new_syn, 'new surface', color='blue')
 Ns.hovercolor = 'gray'
 
-para_lights = plt.axes([0.6, 0.22, 0.25, 0.05])
+para_lights = plt.axes([0.9-0.145, 0.22, 0.145, 0.05])
 LP = Button(para_lights, 'lights are paramerters', color='green')
 LP.__setattr__('value', True)
 LP.hovercolor = 'red'
@@ -97,13 +94,43 @@ IV = Button(image_view, 'image view', color='red')
 IV.__setattr__('value', False)
 IV.hovercolor = 'green'
 
-itbox = fig.add_axes([0.2, 0.01, 0.3, 0.075])
+reg = plt.axes([0.375, 0.07, 0.17, 0.05]) #[left, bottom, width, height]
+REG = Button(reg, 'abs', color='white')
+REG.__setattr__('value', 'abs')
+
+itbox = fig.add_axes([0.6, 0.22, 0.145, 0.05])
 iterations = TextBox(itbox, "Iterations", textalignment="center")
 iterations.set_val(its)
 
-res_path_box = fig.add_axes([0.2, 0.09, 0.65, 0.05])
-PathResults = TextBox(res_path_box, "Folder results", textalignment="center")
+res_path_box = fig.add_axes([0.6, 0.11, 0.3, 0.04])
+PathResults = TextBox(res_path_box, "Results", textalignment="center")
 PathResults.set_val(path_results)
+
+# hyperparameter for surface creation
+pbox = fig.add_axes([0.2, 0.01, 0.05, 0.05]) #[left, bottom, width, height]
+pPara = TextBox(pbox, "p ", textalignment="center")
+pPara.set_val(0.008)
+
+Hbox = fig.add_axes([0.2+0.07, 0.01, 0.05, 0.05]) #[left, bottom, width, height]
+HPara = TextBox(Hbox, "H ", textalignment="center")
+HPara.set_val(0.01)
+
+Ibox = fig.add_axes([0.2+0.14, 0.01, 0.05, 0.05]) #[left, bottom, width, height]
+IPara = TextBox(Ibox, "IT ", textalignment="center")
+IPara.set_val(2)
+
+lbox = fig.add_axes([0.2+0.21, 0.01, 0.05, 0.05]) #[left, bottom, width, height]
+lPara = TextBox(lbox, "l ", textalignment="center")
+lPara.set_val(100)
+
+hbox = fig.add_axes([0.2+0.28, 0.01, 0.05, 0.05]) #[left, bottom, width, height]
+hPara = TextBox(hbox, "h ", textalignment="center")
+hPara.set_val(150)
+
+sigmasbox = fig.add_axes([0.2, 0.07, 0.17, 0.05]) #[left, bottom, width, height]
+sigmasPara = TextBox(sigmasbox, "sigmas ", textalignment="center")
+sigmasPara.set_val('10,6,3,1.5,1')
+
 
 def update(val):
 
@@ -183,22 +210,33 @@ def start_optimization(val):
     model.lights = Parameter(model.lights) if LP.value else model.lights
     model.shadowing = True
 
-    parameters = optimizeParameters(model, path_results=path_results, regularization_function='abs',
+    parameters = optimizeParameters(model, path_results=path_results, regularization_function=REG.value,
                                     iterations=its, selected_lights=selected_lights)
 
 def change_synthetic(val):
     if SynB.value:
         SynB.value=False
-        SynB.color='red'
-        SynB.hovercolor='green'
+        SynB.label.set_text("real")
         model.synthetic = False
         update(val)
     else:
         SynB.value=True
-        SynB.color = 'green'
-        SynB.hovercolor = 'red'
+        SynB.label.set_text("synthetic")
         model.synthetic = True
         update(val)
+
+def change_regularization(val):
+    if REG.value == 'abs':
+        REG.value = 'square'
+        REG.label.set_text("square")
+    elif REG.value == 'square':
+        REG.value = 'exp'
+        REG.label.set_text("exp")
+    elif REG.value == 'exp':
+        REG.value = 'abs'
+        REG.label.set_text("abs")
+    else:
+        raise('regularization is not defined!')
 
 def change_light_parameter(val):
     if LP.value:
@@ -213,7 +251,9 @@ def change_light_parameter(val):
         LP.hovercolor = 'red'
 
 def new_syn_surface(val):
-    model.synthetic_surface = createSurface(resolution=(surface.shape[1], surface.shape[2])).to(device).unsqueeze(0)
+    model.synthetic_surface = createSurface(resolution=(surface.shape[1], surface.shape[2]),
+                                            sigmas=[float(e) for e in (sigmasPara.text.split(','))], p=float(pPara.text), H=float(HPara.text),
+                                            I=int(IPara.text), l=int(lPara.text), h=int(hPara.text)).to(device).unsqueeze(0)
     update(val)
 
 def change_view(val):
@@ -233,5 +273,6 @@ synthetic_surface = SynB.on_clicked(change_synthetic)
 Ns.on_clicked(new_syn_surface)
 IV.on_clicked(change_view)
 LP.on_clicked(change_light_parameter)
+REG.on_clicked(change_regularization)
 
 plt.show()
