@@ -162,15 +162,13 @@ class ResBlock(nn.Module):
 ###############################################
 
 class OptimizeParameters(nn.Module):
-    def __init__(self, surface, lights, camera,
-                 shadowing = True, synthetic = False,
+    def __init__(self, surface, lights, camera, synthetic = False,
                  rough=0.5, diffuse=0.5, reflectance=0.5):
         '''
         initialization of class OptimizeParameters
         :param surface: (B, H, W), zero height surface matrix in pixel-to-height representation
         :param lights: (tuple) -> (lights, boolean), lights: (L,3) light positions for all 12 light sources, boolean: if True lights is Parameter else is not a Parameter
         :param camera: (1, 1, 1, 1, 3), camera position
-        :param shadowing: (boolean), if True shadow effects are applied to output of Filament renderer
         :param rough: (int), material parameter
         :param diffuse: (int), material parameter
         :param reflectance: (int), material parameter
@@ -192,7 +190,6 @@ class OptimizeParameters(nn.Module):
         self.gfm = getGfm()
 
         # shadow effects
-        self.shadowing = shadowing
         pred0 = filament_renderer(surface, self.camera.to(surface.device), self.lights,
                                     rough=0.2, diffuse=0.2, reflectance=0.2)
         self.shadow = (self.gfm.to(surface.device) / pred0).detach().to(self.surface.device)
@@ -230,10 +227,6 @@ class OptimizeParameters(nn.Module):
                                  rough=self.rough.to(device), diffuse=self.diffuse.to(device), reflectance=self.reflectance.to(device))
 
         return (output * self.shadow.to(device)).squeeze(-1)
-        if self.shadowing:
-            return (output * self.shadow.to(device)).squeeze(-1)
-        else:
-            return output.squeeze(-1)
 
     @torch.no_grad()
     def create_synthetic_images(self):

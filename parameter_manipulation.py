@@ -23,7 +23,6 @@ else:
 camera, lights, surface = getScene(batch=1)
 
 model = OptimizeParameters(surface.to(device), lights.to(device), camera.to(device),
-                               shadowing=False,
                                rough=rough, diffuse=diffuse, reflectance=relectance)
 model.eval()
 
@@ -95,8 +94,8 @@ IV.__setattr__('value', False)
 IV.hovercolor = 'green'
 
 reg = plt.axes([0.375, 0.07, 0.17, 0.05]) #[left, bottom, width, height]
-REG = Button(reg, 'abs', color='white')
-REG.__setattr__('value', 'abs')
+REG = Button(reg, 'exp', color='white')
+REG.__setattr__('value', 'exp')
 
 itbox = fig.add_axes([0.6, 0.22, 0.145, 0.05])
 iterations = TextBox(itbox, "Iterations", textalignment="center")
@@ -208,7 +207,6 @@ def start_optimization(val):
     plt.close()
 
     model.lights = Parameter(model.lights) if LP.value else model.lights
-    model.shadowing = True
 
     parameters = optimizeParameters(model, path_results=path_results, regularization_function=REG.value,
                                     iterations=its, selected_lights=selected_lights)
