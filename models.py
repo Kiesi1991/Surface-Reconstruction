@@ -204,12 +204,10 @@ class OptimizeParameters(nn.Module):
 
         # origin light positions for synthetic samples
         self.synthetic_lights = lights + torch.normal(mean=0, std=0.2, size=lights.shape).to(surface.device)
-
         self.synthetic = synthetic
 
         # relevant values for plotting
         self.errs = []
-        self.errors = []
         self.roughs = []
         self.diffuses = []
         self.reflectances = []
@@ -308,8 +306,8 @@ class OptimizeParameters(nn.Module):
         plt.savefig(os.path.join(path, 'l_to_zero.png'))
         plt.close()
 
-        x = np.linspace(0, len(self.errors) - 1, len(self.errors)) * plot_every
-        plt.plot(x, self.errors, label='errors')
+        x = np.linspace(0, len(self.errs) - 1, len(self.errs))
+        plt.plot(x, self.errs, label='errors')
         plt.xlabel('iteration')
         plt.ylabel('Error')
         plt.legend()

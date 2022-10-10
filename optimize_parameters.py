@@ -69,9 +69,6 @@ def optimizeParameters(model, path_results=os.path.join('results', 'optimization
             err.backward()
             optimizer.step()
 
-            if iteration % 50 == 0:
-                model.errors.append(statistics.mean(model.errs[-10:]))
-
             # apply some plotting functions to the intermediate results
             if iteration % plot_every == 0:
 
