@@ -104,8 +104,8 @@ class ResidualNetwork(nn.Module):
         plt.figure(figsize=(20, 10))
         plt.subplot(1, 2, 1)
 
-        plt.plot(x, height_profile_x_pred, color='red', label='prediction')
-        plt.plot(x, height_profile_x_opt, color='red', linestyle='dashed')
+        plt.plot(x, height_profile_x_pred-height_profile_x_pred.mean(), color='red', label='prediction')
+        plt.plot(x, height_profile_x_opt-height_profile_x_opt.mean(), color='red', label='optimized surface', linestyle='dashed')
         plt.xlabel('pixels')
         plt.ylabel('height')
         plt.legend()
@@ -113,8 +113,8 @@ class ResidualNetwork(nn.Module):
 
         plt.subplot(1, 2, 2)
 
-        plt.plot(y, height_profile_y_pred, color='red', label='prediction')
-        plt.plot(y, height_profile_y_opt, color='red', linestyle='dashed')
+        plt.plot(y, height_profile_y_pred-height_profile_y_pred.mean(), color='red', label='prediction')
+        plt.plot(y, height_profile_y_opt-height_profile_y_opt.mean(), color='red', label='optimized surface', linestyle='dashed')
         plt.xlabel('pixels')
         plt.ylabel('height')
         plt.legend()

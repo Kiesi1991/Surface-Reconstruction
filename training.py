@@ -36,7 +36,10 @@ if torch.cuda.is_available():
 else:
     device = 'cpu'
 
-optimized_parameters = getOptimizedParameters(os.path.join('results', 'optimization', '3', '3'))
+try:
+    optimized_parameters = getOptimizedParameters(os.path.join('results', 'optimization', '1', '0'))
+except:
+    raise ('Please enter a folder path including optimized parameters')
 shader = FilamentShading(optimized_parameters)
 dataset = DummySet(resolution, amount_data=num_iter)
 
@@ -86,5 +89,4 @@ def update(network: nn.Module, data: DataLoader, loss: nn.Module,
 mse = torch.nn.MSELoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=0.0)
 
-os.mkdir(os.path.join(path, f'{iter}'))
 errs = update(model, trainloader, mse, optimizer)

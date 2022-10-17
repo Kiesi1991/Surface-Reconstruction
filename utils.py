@@ -77,7 +77,7 @@ def scan(path_real_samples):
     images = {}
     for idx, path in enumerate(paths):
         number = path[-6:-4]
-        if number[0] == '/':
+        if number[0] == '\\':
             number = number[1]
         number = int(number)
         im = imageio.imread(path)
@@ -139,7 +139,7 @@ def getRealSamples(path):
         numbers = [x[-6:-4] for x in paths]
         images = [None] * len(numbers)
         for idx, number in enumerate(numbers):
-            if number[0] == '/':
+            if number[0] == "\\":
                 number = number[1]
             images[int(number)] = paths[idx]
 
@@ -283,12 +283,20 @@ def filament_renderer(surface, camera, lights,
         dfg_multiscatter=None
     )
 
-def createSurface(resolution, sigmas = [5], p = 0.001, H = 0.01, I=5, l=1, h=50):
+def createSurface(resolution, sigmas = (10,6,3,1.5,1), p = 0.008, H = 0.01, I=2, l=100, h=150):#(resolution, sigmas = [5], p = 0.001, H = 0.01, I=5, l=1, h=50):
     surface = np.zeros(resolution)
+
+    # variation of standard deviations (percent)
+    variation = 0.02
+
     for sigma in sigmas:
-        sigma_var = 0#np.random.normal(0, sigma*0.4)
-        p_var = 0#np.clip(np.random.normal(0, p * 0.8), 0.00001, 0.05)
-        surface1 = random_walk(resolution, p+p_var, I, l, h)
+        sigma_var = np.clip(np.random.normal(0, sigma*variation),
+                            a_min=-(sigma*variation*2),
+                            a_max=sigma*variation*2) #0
+        p_var = np.clip(np.random.normal(0, p * variation),
+                        a_min=-(p*variation*2),
+                        a_max=p*variation*2) #0
+        surface1 = randomWalk(resolution, p+p_var, I, l, h)
         surface1 = gaussian_filter(surface1, sigma=sigma+sigma_var, mode='reflect')
         surface1 /= surface1.max()
         surface1 *= (sigma+sigma_var)
@@ -296,11 +304,13 @@ def createSurface(resolution, sigmas = [5], p = 0.001, H = 0.01, I=5, l=1, h=50)
 
     #surface -= surface.min()
     surface /= surface.max()
-    h_var = 0#np.random.normal(0, h*0.2)
+    h_var = np.clip(np.random.normal(0, h*variation),
+                    a_min=-(h*variation*2),
+                    a_max=h*variation*2)
     surface *= (H+h_var)
     return (torch.from_numpy(surface) - torch.mean(torch.from_numpy(surface))).float()
 
-def random_walk(size, p, I, l, h):
+def randomWalk(size, p, I, l, h):
     '''
     perform random walk method for bulky hill expansions.
     :param size: (tuple) -> (H:int, W:int), size of output matrix
