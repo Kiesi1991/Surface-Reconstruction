@@ -283,31 +283,49 @@ def filament_renderer(surface, camera, lights,
         dfg_multiscatter=None
     )
 
-def createSurface(resolution, sigmas = (10,6,3,1.5,1), p = 0.008, H = 0.01, I=2, l=100, h=150):#(resolution, sigmas = [5], p = 0.001, H = 0.01, I=5, l=1, h=50):
+def createSurface(resolution, sigmas = (10,6,3,1.5,1),
+                  p = 0.008, H = 0.008, I=2, l=100, h=150,
+                  variation = 0.02):
+    '''
+    create synthetic surface with the use of random walk method
+    :param resolution: (tuple) -> (H:int, W:int), size of output matrix
+    :param sigmas: (tuple) -> (float, ..., float), looped standard deviations for Gaussian Filter
+    :param p: (float), percentage of starting points based on amount of pixels (H*W)
+    :param H: (float), maximum height of synthetic surface
+    :param I: (int), number of loops (iterations)
+    :param l: (int), minimum length of step size S
+    :param h: (int), maximum length of step size S
+    :param variation: (float), variation of standard deviations (percent)
+    :return: (pytorch tensor) -> (H, W), synthetic surface pytorch tensor
+    '''
     surface = np.zeros(resolution)
-
-    # variation of standard deviations (percent)
-    variation = 0.02
-
     for sigma in sigmas:
+        # variation of standard deviation sampled from normal distribution
+        # np.clip is used to control outliers from sampling
         sigma_var = np.clip(np.random.normal(0, sigma*variation),
                             a_min=-(sigma*variation*2),
-                            a_max=sigma*variation*2) #0
+                            a_max=sigma*variation*2)
         p_var = np.clip(np.random.normal(0, p * variation),
                         a_min=-(p*variation*2),
-                        a_max=p*variation*2) #0
+                        a_max=p*variation*2)
+        # apply random walk method
         surface1 = randomWalk(resolution, p+p_var, I, l, h)
         surface1 = gaussian_filter(surface1, sigma=sigma+sigma_var, mode='reflect')
+        # set maximum height to 1
         surface1 /= surface1.max()
+        # set maximum height equal to sigma from gaussian_filter
         surface1 *= (sigma+sigma_var)
+        # add surface structure to overall surface
         surface += surface1
-
-    #surface -= surface.min()
+    # set maximum height to 1
     surface /= surface.max()
+    # variation of height sampled from normal distribution
     h_var = np.clip(np.random.normal(0, h*variation),
                     a_min=-(h*variation*2),
                     a_max=h*variation*2)
+    # set maximum surface height to H + variation
     surface *= (H+h_var)
+    # return synthetic surface (mean of synthetic surface = 0)
     return (torch.from_numpy(surface) - torch.mean(torch.from_numpy(surface))).float()
 
 def randomWalk(size, p, I, l, h):
@@ -315,7 +333,7 @@ def randomWalk(size, p, I, l, h):
     perform random walk method for bulky hill expansions.
     :param size: (tuple) -> (H:int, W:int), size of output matrix
     :param p: (float), percentage of starting points based on amount of pixels (H*W)
-    :param p: (int), number of loops (iterations)
+    :param I: (int), number of loops (iterations)
     :param l: (int), minimum length of step size S
     :param h: (int), maximum length of step size S
     :return: (numpy array) -> (H:int, W:int) output matrix

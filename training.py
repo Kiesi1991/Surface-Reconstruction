@@ -74,12 +74,13 @@ def update(network: nn.Module, data: DataLoader, loss: nn.Module,
         opt.step()
 
         if (iter % 100) == 0:
+            path1 = createNextFolder(path)
             predicted_surface = model(real_samples.to(device).permute(0,4,2,3,1).squeeze(-1))  # (B,H,W)
             predicted_images = shader.forward((predicted_surface))  # (B,L,H,W)
-            network.plotImageComparism(real_samples, predicted_images, path)
-            network.plotProfileDiagrams(shader.optimized_surface, predicted_surface, path)
+            network.plotImageComparism(real_samples, predicted_images, path1)
+            network.plotProfileDiagrams(shader.optimized_surface, predicted_surface, path1)
             network.plotErrorDiagram(errs, path)
-            torch.save(model.state_dict(), os.path.join(path, 'model.pt'))
+            torch.save(model.state_dict(), os.path.join(path1, 'model.pt'))
     return errs
 
 ############################################################################
