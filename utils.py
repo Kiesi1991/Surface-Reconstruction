@@ -319,12 +319,12 @@ def createSurface(resolution, sigmas = (10,6,3,1.5,1),
         surface += surface1
     # set maximum height to 1
     surface /= surface.max()
-    # variation of height sampled from normal distribution
-    h_var = np.clip(np.random.normal(0, h*variation),
-                    a_min=-(h*variation*2),
-                    a_max=h*variation*2)
+    # variation of height sampled from normal distributionf
+    H_var = np.clip(np.random.normal(0, H*variation),
+                    a_min=-(H*variation*2),
+                    a_max=H*variation*2)
     # set maximum surface height to H + variation
-    surface *= (H+h_var)
+    surface *= (H+H_var)
     # return synthetic surface (mean of synthetic surface = 0)
     return (torch.from_numpy(surface) - torch.mean(torch.from_numpy(surface))).float()
 

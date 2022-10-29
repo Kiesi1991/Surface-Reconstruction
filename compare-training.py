@@ -4,7 +4,7 @@ from statistics import mean
 import numpy as np
 from pathlib import Path
 
-path_results = os.path.join('results', 'trainNN1')
+path_results = os.path.join('results', 'trainNN3')
 file_path = os.path.join(path_results, '**', f'errors.pt')
 paths = glob.glob(file_path, recursive=True)
 

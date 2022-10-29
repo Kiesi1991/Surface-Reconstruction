@@ -17,11 +17,11 @@ from tqdm import tqdm
 
 
 blocks = [ResBlock, ConvBlock, ResblockBig]
-#blocks = [ResBlock]
+#blocks = [ResblockBig]
 #blocks = [ResBlock, ConvBlock, ResblockBig]
 
 layers=[6,12]
-mid_channels=[16, 32]
+mid_channels=[16,32]
 
 for _layers in layers:
     for _mid_channels in mid_channels:
@@ -30,13 +30,13 @@ for _layers in layers:
             resolution = (386, 516)
 
             # training parameters
-            num_iter = 12000
+            num_iter = 4001
             batch_size = 4
             lr = 1e-4
             crop = 50
 
             real_samples = getRealSamples('realSamples1')
-            path = createNextFolder(os.path.join('results', 'trainNN3'))
+            path = createNextFolder(os.path.join('results', 'trainNN4'))
 
             with open(os.path.join(path, 'parameters.txt'), 'w') as f:
                 f.write(f'BlockNet = {str(block)}\n'
