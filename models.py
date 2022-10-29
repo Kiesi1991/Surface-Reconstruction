@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 from torch import nn
 from torch.nn.parameter import Parameter
@@ -8,32 +9,352 @@ import os
 import matplotlib.pyplot as plt
 import cv2
 import statistics
+from scipy.interpolate import make_interp_spline
+from statistics import mean
 
-###############################################
-#                ZPrediction                  #
-###############################################
 
-class zPrediction(nn.Module):
-    def __init__(self):
-        super(zPrediction, self).__init__()
-        self.conv1 = nn.Conv2d(12, 96, kernel_size=3, padding=3 // 2)
-        self.conv2 = nn.Conv2d(96, 48, kernel_size=3, padding=3 // 2)
-        self.conv3 = nn.Conv2d(48, 24, kernel_size=3, padding=3 // 2)
-        self.conv4 = nn.Conv2d(24, 12, kernel_size=3, padding=3 // 2)
-        self.conv5 = nn.Conv2d(12, 1, kernel_size=3, padding=3 // 2)
-
-        self.relu = nn.ReLU()
-        self.selu = nn.SELU()
+class BaseNet(nn.Module):
+    def __init__(self, crop):
+        super().__init__()
+        self.crop = crop
 
     def forward(self, x):
-        x = x.float()
-        x = self.selu(self.conv1(x))
-        x = self.selu(self.conv2(x))
-        x = self.selu(self.conv3(x))
-        x = self.selu(self.conv4(x))
-        x = self.conv5(x)
+        pass
+    def plotImageComparism(self, samples, pred, path):
+        '''
+        save 12 images, which demonstrates the comparism of a real cabin-cap image with the prediction output of the Filament Renderer
+        :param samples: (B, 1, H, W, 12), real cabin-cap image samples in pytorch tensor type
+        :param pred: (B, 1, H, W, 12), prediction of cabin-cap samples (output of Filament renderer)
+        :param path: (str), directory path for saving images
+        :return: None
+        '''
+        crop = self.crop
+        for L in range(samples.shape[4]):
+            p = cv2.cvtColor(pred[0, L, crop:-crop, crop:-crop].cpu().detach().numpy(), cv2.COLOR_GRAY2RGB)
+            t = cv2.cvtColor(samples[0, 0, crop:-crop, crop:-crop, L].cpu().detach().numpy(), cv2.COLOR_GRAY2RGB)
 
+            plt.figure(figsize=(20, 10))
+            plt.subplot(1, 2, 1)
+            plt.imshow(t)
+            plt.title('real image')
+            plt.clim(0, 1.0)
+
+            plt.subplot(1, 2, 2)
+            plt.imshow(p)
+            plt.title('predicted image')
+            plt.clim(0, 1.0)
+
+            plt.savefig(os.path.join(path, f'Comparism-{L}.png'))
+            plt.close()
+    def plotProfileDiagrams(self,optimized_surface, predicted_surface , path):
+        '''
+        plot
+        angles.png -> image, where every pixel value demonstrates the angle between normal vector and a vector in z-direction (0, 0, 1),
+        error.png -> error while optimization,
+        height-profile.png -> a height profile in x- and y-direction,
+        l_to_origin.png -> line diagram with 12 lines corresponding to the 12 light sources, every line illustrates the distance between origin (position in construction plan) and actual optimized position,
+        l_to_zero.png -> same as l_to_origin.png, but instead of origin distance is compared to position (0, 0, 0),
+        material-parameters.png -> change of material parameters while optimization
+        and save them to the given directory path.
+        :param plot_every: (int), plotting period
+        :param path: (str), string path, where plots are saved
+        :return: None
+        '''
+        crop = self.crop
+        height_profile_x_opt, height_profile_y_opt = getHeightProfile(optimized_surface[..., crop:-crop, crop:-crop], divide_by_mean=False)
+        height_profile_x_pred, height_profile_y_pred = getHeightProfile(predicted_surface[..., crop:-crop, crop:-crop], divide_by_mean=False)
+
+        x = np.linspace(0, len(height_profile_x_pred) - 1, len(height_profile_x_pred))
+        y = np.linspace(0, len(height_profile_y_pred) - 1, len(height_profile_y_pred))
+
+        plt.figure(figsize=(20, 10))
+        plt.subplot(1, 2, 1)
+
+        plt.plot(x, height_profile_x_pred-height_profile_x_pred.mean(), color='red', label='prediction')
+        plt.plot(x, height_profile_x_opt-height_profile_x_opt.mean(), color='red', label='optimized surface', linestyle='dashed')
+        plt.xlabel('pixels')
+        plt.ylabel('height')
+        plt.legend()
+        plt.title('profile in x-direction')
+
+        plt.subplot(1, 2, 2)
+
+        plt.plot(y, height_profile_y_pred-height_profile_y_pred.mean(), color='red', label='prediction')
+        plt.plot(y, height_profile_y_opt-height_profile_y_opt.mean(), color='red', label='optimized surface', linestyle='dashed')
+        plt.xlabel('pixels')
+        plt.ylabel('height')
+        plt.legend()
+        plt.title('profile in y-direction')
+
+        plt.savefig(os.path.join(path, f'height-profile.png'))
+        plt.close()
+
+    def plotErrorDiagram(self, errors, path):
+
+        torch.save(torch.tensor(errors), os.path.join(path, 'errors.pt'))
+
+        x = np.linspace(0, len(errors) - 1, len(errors))
+        plt.plot(x, errors, label='errors')
+        plt.ylim(bottom=0, top=0.12)
+        plt.xlabel('iteration')
+        plt.ylabel('Error')
+        plt.legend()
+        plt.savefig(os.path.join(path, f'error.png'))
+        plt.close()
+
+class ResNet(BaseNet):
+    def __init__(self, layers=24, mid_channels=12, crop=50):
+        super().__init__(crop=crop)
+        self.crop = crop
+        self.begin = nn.Conv2d(12, mid_channels, kernel_size=7, padding=7 // 2)
+        self.res_blocks = nn.ModuleList([ResBlock5(mid_channels) for _ in range(layers)])
+        self.head = nn.Conv2d(mid_channels, 1, kernel_size=3, padding=3 // 2)
+
+        self.relu = nn.ReLU()
+
+    def forward(self, x):
+        x = self.relu(self.begin(x))
+        for block in self.res_blocks:
+            x = block(x)
+        x = self.head(x)
         return x.squeeze(1)
+
+class ResBlock0(nn.Module):
+    def __init__(self, in_ch):
+        super().__init__()
+        self.conv1 = nn.Conv2d(in_ch, in_ch, kernel_size=7, padding=7//2)
+        self.conv2 = nn.Conv2d(in_ch, in_ch//3, kernel_size=5, padding=5//2)
+
+        self.conv3 = nn.Conv2d(in_ch, in_ch, kernel_size=7, padding=7//2)
+        self.conv4 = nn.Conv2d(in_ch, in_ch//3, kernel_size=5, padding=5//2)
+
+        self.skipconnections = nn.Conv2d(in_ch, in_ch//3, kernel_size=1)
+
+        self.relu = nn.ReLU()
+
+    def forward(self, x):
+        b, l, h, w = x.shape
+        fx = self.conv2(self.relu(self.conv1(x)))
+
+        lx = F.interpolate(x, (h//4, w//4))
+        lx = self.conv4(self.relu(self.conv3(lx)))
+        lx = F.interpolate(lx, (h, w))
+
+        skip = self.skipconnections(x)
+        return self.relu(torch.cat((fx, lx, skip), dim=1))
+
+class ResBlock1(nn.Module):
+    def __init__(self, in_ch):
+        super().__init__()
+        self.conv1 = nn.Conv2d(in_ch, in_ch, kernel_size=7, padding=7//2)
+        self.conv2 = nn.Conv2d(in_ch, in_ch//2, kernel_size=5, padding=5//2)
+
+        self.skipconnections = nn.Conv2d(in_ch, in_ch//2, kernel_size=1)
+
+        self.relu = nn.ReLU()
+
+    def forward(self, x):
+        fx = self.conv2(self.relu(self.conv1(x)))
+
+        skip = self.skipconnections(x)
+        return self.relu(torch.cat((fx, skip), dim=1))
+
+class ResBlock2(nn.Module):
+    def __init__(self, in_ch):
+        super().__init__()
+        self.conv1 = nn.Conv2d(in_ch, in_ch, kernel_size=7, padding=7//2)
+        self.conv2 = nn.Conv2d(in_ch, in_ch, kernel_size=5, padding=5//2)
+
+        self.relu = nn.ReLU()
+    def forward(self, x):
+        fx = self.conv2(self.relu(self.conv1(x)))
+        return self.relu(fx)
+
+class ResBlock3(nn.Module):
+    def __init__(self, in_ch):
+        super().__init__()
+        self.conv = nn.Conv2d(in_ch, in_ch, kernel_size=3, padding=3//2)
+
+        self.relu = nn.ReLU()
+    def forward(self, x):
+        fx = self.conv(x)
+        return self.relu(fx)
+
+class ResBlock4(nn.Module):
+    def __init__(self, in_ch):
+        super().__init__()
+        self.conv1 = nn.Conv2d(in_ch, in_ch, kernel_size=3, padding=3 // 2)
+        self.conv2 = nn.Conv2d(in_ch, in_ch, kernel_size=3, padding=3 // 2)
+
+        self.relu = nn.ReLU()
+    def forward(self, x):
+        fx = self.relu(self.conv1(x))
+        fx = self.conv2(fx)
+        return self.relu(fx+x)
+
+class ResBlock5(nn.Module):
+    def __init__(self, in_ch):
+        super().__init__()
+        self.conv1 = nn.Conv2d(in_ch, in_ch, kernel_size=3, padding=3 // 2)
+        self.conv2 = nn.Conv2d(in_ch, in_ch, kernel_size=3, padding=3 // 2)
+
+        self.relu = nn.ReLU()
+        self.skipconnections = nn.Conv2d(in_ch, in_ch, kernel_size=1)
+    def forward(self, x):
+        fx = self.relu(self.conv1(x))
+        fx = self.conv2(fx)
+        skip = self.skipconnections(x)
+        return self.relu(fx+skip)
+
+class ResBlock6(nn.Module):
+    def __init__(self, in_ch):
+        super().__init__()
+        self.conv1 = nn.Conv2d(in_ch, in_ch, kernel_size=3, padding=3 // 2)
+        self.conv2 = nn.Conv2d(in_ch, in_ch, kernel_size=3, padding=3 // 2)
+
+        self.relu = nn.ReLU()
+    def forward(self, x):
+        fx = self.relu(self.conv1(x))
+        return self.relu(self.conv2(fx))
+
+
+class ResBlockT(nn.Module):
+    def __init__(self, in_ch, dim_red=False):
+        super().__init__()
+        self.conv1 = nn.Conv2d(in_ch*2 if dim_red else in_ch, in_ch, kernel_size=3, padding=3 // 2)
+        self.conv2 = nn.Conv2d(in_ch, in_ch, kernel_size=3, padding=3 // 2)
+        self.skipconnections = nn.Conv2d(in_ch*2 if dim_red else in_ch, in_ch, kernel_size=1)
+
+        self.relu = nn.ReLU()
+    def forward(self, x):
+        fx = self.relu(self.conv1(x))
+        fx = self.conv2(fx)
+        skip = self.skipconnections(x) if self.dim_red else x
+        return self.relu(fx+skip)
+
+class ResBlock(nn.Module):
+    def __init__(self, C, dim_red=False):
+        '''
+        :param C: (int), amount of channels
+        :param dim_red: (boolean), dimensionality reduction,
+        if True Cin=C*2, Cout=C, else Cin=Cout=C
+        (Cin: input channels, Cout: output channels)
+        '''
+        super().__init__()
+        self.conv1 = nn.Conv2d(C*2 if dim_red else C, C, kernel_size=3, padding=3 // 2)
+        self.conv2 = nn.Conv2d(C, C, kernel_size=3, padding=3 // 2)
+        self.skipconnections = nn.Conv2d(C*2 if dim_red else C, C, kernel_size=1)
+
+        self.relu = nn.ReLU()
+        #nn.init.kaiming_normal(self.conv1.weight.data, nonlinearity='relu')
+        #nn.init.kaiming_normal(self.conv2.weight.data, nonlinearity='relu')
+        #nn.init.kaiming_normal(self.skipconnections.weight.data, nonlinearity='relu')
+    def forward(self, x):
+        '''
+        forward pass of ResBlock
+        :param x: (B, C or C*2, H, W), input tensor
+        :return: (B, C, H, W), output tensor
+        '''
+        fx = self.relu(self.conv1(x))
+        fx = self.conv2(fx)
+        skip = self.skipconnections(x)
+        return self.relu(fx+skip)
+
+class ConvBlock(nn.Module):
+    def __init__(self, C, dim_red=False):
+        '''
+        :param C: (int), amount of channels
+        :param dim_red: (boolean), dimensionality reduction,
+        if True Cin=C*2, Cout=C, else Cin=Cout=C
+        (Cin: input channels, Cout: output channels)
+        '''
+        super().__init__()
+        self.conv1 = nn.Conv2d(C*2 if dim_red else C, C, kernel_size=3, padding=3 // 2)
+        self.conv2 = nn.Conv2d(C, C, kernel_size=3, padding=3 // 2)
+
+        self.relu = nn.ReLU()
+    def forward(self, x):
+        '''
+        forward pass of ResBlock
+        :param x: (B, C or C*2, H, W), input tensor
+        :return: (B, C, H, W), output tensor
+        '''
+        fx = self.relu(self.conv1(x))
+        fx = self.conv2(fx)
+        return self.relu(fx)
+
+class ResblockBig(nn.Module):
+    def __init__(self, C, dim_red=False):
+        '''
+        :param C: (int), amount of channels
+        :param dim_red: (boolean), dimensionality reduction,
+        if True Cin=C*2, Cout=C, else Cin=Cout=C
+        (Cin: input channels, Cout: output channels)
+        '''
+        super().__init__()
+        self.conv1 = nn.Conv2d(C*2 if dim_red else C, C, kernel_size=7, padding=7 // 2)
+        self.conv2 = nn.Conv2d(C, C, kernel_size=5, padding=5 // 2)
+        self.skipconnections = nn.Conv2d(C*2 if dim_red else C, C, kernel_size=1)
+
+        self.relu = nn.ReLU()
+    def forward(self, x):
+        '''
+        forward pass of ResBlock
+        :param x: (B, C or C*2, H, W), input tensor
+        :return: (B, C, H, W), output tensor
+        '''
+        fx = self.relu(self.conv1(x))
+        fx = self.conv2(fx)
+        skip = self.skipconnections(x)
+        return self.relu(fx+skip)
+
+class ResblockBigT(nn.Module):
+    def __init__(self, in_ch, dim_red=False):
+        super().__init__()
+        self.conv1 = nn.Conv2d(in_ch*2 if dim_red else in_ch, in_ch, kernel_size=7, padding=7 // 2)
+        self.conv2 = nn.Conv2d(in_ch, in_ch, kernel_size=5, padding=5 // 2)
+        self.skipconnections = nn.Conv2d(in_ch*2 if dim_red else in_ch, in_ch, kernel_size=1)
+
+        self.relu = nn.ReLU()
+    def forward(self, x):
+        fx = self.relu(self.conv1(x))
+        fx = self.conv2(fx)
+        skip = self.skipconnections(x) if self.dim_red else x
+        return self.relu(fx+skip)
+
+class SurfaceNet(BaseNet):
+    '''
+    SurfaceNet inherits from BaseNet and it consists of the general architecture
+    '''
+    def __init__(self, layers=12, mid_channels=32, BlockNet=ResBlock):
+        '''
+        :param layers: (int), amount of stacked layers
+        :param mid_channels:  (int), amount of mid channels CM
+        :param BlockNet: (nn.Module), module for general architecture
+        '''
+        super().__init__(crop=50)
+        # first and last layer
+        self.begin = nn.Conv2d(12, mid_channels, kernel_size=7, padding= 7 // 2)
+        self.head = nn.Conv2d(mid_channels//2**3, 1, kernel_size=3, padding=3 // 2)
+        # stacked layers BlockNet layers
+        self.mid_layers = nn.ModuleList([BlockNet(mid_channels, dim_red=False) for i in range(layers // 4)])
+        self.mid_layers.extend(nn.ModuleList([BlockNet(mid_channels//2, dim_red=True if i==0 else False) for i in range(layers // 4)]))
+        self.mid_layers.extend(nn.ModuleList([BlockNet(mid_channels//2**2, dim_red=True if i==0 else False) for i in range(layers // 4)]))
+        self.mid_layers.extend(nn.ModuleList([BlockNet(mid_channels//2**3, dim_red=True if i==0 else False) for i in range(layers // 4)]))
+    def forward(self, x):
+        '''
+        forward pass of SurfaceNet
+        :param x: (B,12,H,W), pytorch tensor with 12 images
+        :return: (B,H,W), surface matrix in pixel to height representation
+        '''
+        x = self.begin(x)
+        for block in self.mid_layers:
+            x = block(x)
+        x = self.head(x)
+        return x.squeeze(1)
+
+
+
 
 ###############################################
 #               ResidualNetwork               #
@@ -46,7 +367,6 @@ class ResidualNetwork(nn.Module):
         self.begin = nn.Conv2d(12, 12, kernel_size=1)
         self.res_blocks = nn.ModuleList([ResBlock(12) for i in range(layers)])
         self.head = nn.Conv2d(12, 1, kernel_size=3, padding=3//2)
-    lam = 0.000001
     def forward(self, x):
         x = self.begin(x)
         for block in self.res_blocks:
@@ -131,31 +451,6 @@ class ResidualNetwork(nn.Module):
         plt.legend()
         plt.savefig(os.path.join(path, f'error.png'))
         plt.close()
-
-class ResBlock(nn.Module):
-    def __init__(self, in_ch):
-        super().__init__()
-        self.conv1 = nn.Conv2d(in_ch, in_ch, kernel_size=7, padding=7//2)
-        self.conv2 = nn.Conv2d(in_ch, in_ch//3, kernel_size=5, padding=5//2)
-
-        self.conv3 = nn.Conv2d(in_ch, in_ch, kernel_size=7, padding=7//2)
-        self.conv4 = nn.Conv2d(in_ch, in_ch//3, kernel_size=5, padding=5//2)
-
-        self.skipconnections = nn.Conv2d(in_ch, in_ch//3, kernel_size=1)
-
-        self.relu = nn.ReLU()
-        self.selu = nn.SELU()
-
-    def forward(self, x):
-        b, l, h, w = x.shape
-        fx = self.conv2(self.selu(self.conv1(x)))
-
-        lx = F.interpolate(x, (h//4, w//4))
-        lx = self.conv4(self.selu(self.conv3(lx)))
-        lx = F.interpolate(lx, (h, w))
-
-        skip = self.skipconnections(x)
-        return self.selu(torch.cat((fx, lx, skip), dim=1))
 
 ###############################################
 #               Optimizer                     #
