@@ -28,6 +28,24 @@ def getNormals(surface, pd=0.0031):
     normals = torch.cat((-dfdx, -dfdy, z), dim=3)
     return normalize(normals.unsqueeze(1))
 
+def getGradients(surface, pd=0.0031):
+    '''
+    calculates normal vectors given a surface matrix.
+    :param surface: (B, H, W), surface matrix in pixel-to-height representation, every entry contains a height value in z-direction
+    :param pd: (float), distance between pixels
+    :return: (B, 2, H, W), gradients in x and y direction for every pixel
+    '''
+    dfdx = (surface[..., 1:] - surface[..., :-1]) / pd
+    dfdx1 = ((surface[..., -1] - surface[..., -2]) / pd).unsqueeze(2)
+    dfdx = torch.cat((dfdx, dfdx1), dim=2).unsqueeze(1)
+
+    dfdy = ((surface[:, 1:, ...] - surface[:, :-1, ...]) / pd)
+    dfdy1 = ((surface[:, -1, ...] - surface[:, -2, ...]) / pd).unsqueeze(1)
+    dfdy = torch.cat((dfdy, dfdy1), dim=1).unsqueeze(1)
+
+    gradients = torch.cat((dfdx, dfdy), dim=1)
+    return normalize(gradients)
+
 def getVectors(surface, targetLocation, pd=0.0031, norm=True):
     '''
     calculates vectors between target positions and pixel positions.

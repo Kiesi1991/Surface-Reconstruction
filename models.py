@@ -95,7 +95,8 @@ class BaseNet(nn.Module):
 
         x = np.linspace(0, len(errors) - 1, len(errors))
         plt.plot(x, errors, label='errors')
-        plt.ylim(bottom=0)
+        #plt.ylim(bottom=0)
+        plt.yscale('log')
         plt.xlabel('iteration')
         plt.ylabel('Error')
         plt.legend()
@@ -117,7 +118,13 @@ class ResNet(BaseNet):
         for block in self.res_blocks:
             x = block(x)
         x = self.head(x)
+        # register the hook
+        h = x.register_hook(self.activations_hook)
         return x.squeeze(1)
+
+    # hook for the gradients of the activations
+    def activations_hook(self, grad):
+        self.gradients = grad
 
 class ResBlock0(nn.Module):
     def __init__(self, in_ch):
@@ -258,7 +265,12 @@ class SurfaceNet(BaseNet):
         for block in self.mid_layers:
             x = block(x)
         x = self.head(x)
+        h = x.register_hook(self.activations_hook)
         return x.squeeze(1)
+
+    # hook for the gradients of the activations
+    def activations_hook(self, grad):
+        self.gradients = grad
 
 ###############################################
 #               ResidualNetwork               #
