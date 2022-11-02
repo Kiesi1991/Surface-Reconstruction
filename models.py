@@ -95,7 +95,7 @@ class BaseNet(nn.Module):
 
         x = np.linspace(0, len(errors) - 1, len(errors))
         plt.plot(x, errors, label='errors')
-        plt.ylim(bottom=0, top=0.12)
+        plt.ylim(bottom=0)
         plt.xlabel('iteration')
         plt.ylabel('Error')
         plt.legend()
@@ -143,96 +143,8 @@ class ResBlock0(nn.Module):
         skip = self.skipconnections(x)
         return self.relu(torch.cat((fx, lx, skip), dim=1))
 
-class ResBlock1(nn.Module):
-    def __init__(self, in_ch):
-        super().__init__()
-        self.conv1 = nn.Conv2d(in_ch, in_ch, kernel_size=7, padding=7//2)
-        self.conv2 = nn.Conv2d(in_ch, in_ch//2, kernel_size=5, padding=5//2)
 
-        self.skipconnections = nn.Conv2d(in_ch, in_ch//2, kernel_size=1)
-
-        self.relu = nn.ReLU()
-
-    def forward(self, x):
-        fx = self.conv2(self.relu(self.conv1(x)))
-
-        skip = self.skipconnections(x)
-        return self.relu(torch.cat((fx, skip), dim=1))
-
-class ResBlock2(nn.Module):
-    def __init__(self, in_ch):
-        super().__init__()
-        self.conv1 = nn.Conv2d(in_ch, in_ch, kernel_size=7, padding=7//2)
-        self.conv2 = nn.Conv2d(in_ch, in_ch, kernel_size=5, padding=5//2)
-
-        self.relu = nn.ReLU()
-    def forward(self, x):
-        fx = self.conv2(self.relu(self.conv1(x)))
-        return self.relu(fx)
-
-class ResBlock3(nn.Module):
-    def __init__(self, in_ch):
-        super().__init__()
-        self.conv = nn.Conv2d(in_ch, in_ch, kernel_size=3, padding=3//2)
-
-        self.relu = nn.ReLU()
-    def forward(self, x):
-        fx = self.conv(x)
-        return self.relu(fx)
-
-class ResBlock4(nn.Module):
-    def __init__(self, in_ch):
-        super().__init__()
-        self.conv1 = nn.Conv2d(in_ch, in_ch, kernel_size=3, padding=3 // 2)
-        self.conv2 = nn.Conv2d(in_ch, in_ch, kernel_size=3, padding=3 // 2)
-
-        self.relu = nn.ReLU()
-    def forward(self, x):
-        fx = self.relu(self.conv1(x))
-        fx = self.conv2(fx)
-        return self.relu(fx+x)
-
-class ResBlock5(nn.Module):
-    def __init__(self, in_ch):
-        super().__init__()
-        self.conv1 = nn.Conv2d(in_ch, in_ch, kernel_size=3, padding=3 // 2)
-        self.conv2 = nn.Conv2d(in_ch, in_ch, kernel_size=3, padding=3 // 2)
-
-        self.relu = nn.ReLU()
-        self.skipconnections = nn.Conv2d(in_ch, in_ch, kernel_size=1)
-    def forward(self, x):
-        fx = self.relu(self.conv1(x))
-        fx = self.conv2(fx)
-        skip = self.skipconnections(x)
-        return self.relu(fx+skip)
-
-class ResBlock6(nn.Module):
-    def __init__(self, in_ch):
-        super().__init__()
-        self.conv1 = nn.Conv2d(in_ch, in_ch, kernel_size=3, padding=3 // 2)
-        self.conv2 = nn.Conv2d(in_ch, in_ch, kernel_size=3, padding=3 // 2)
-
-        self.relu = nn.ReLU()
-    def forward(self, x):
-        fx = self.relu(self.conv1(x))
-        return self.relu(self.conv2(fx))
-
-
-class ResBlockT(nn.Module):
-    def __init__(self, in_ch, dim_red=False):
-        super().__init__()
-        self.conv1 = nn.Conv2d(in_ch*2 if dim_red else in_ch, in_ch, kernel_size=3, padding=3 // 2)
-        self.conv2 = nn.Conv2d(in_ch, in_ch, kernel_size=3, padding=3 // 2)
-        self.skipconnections = nn.Conv2d(in_ch*2 if dim_red else in_ch, in_ch, kernel_size=1)
-
-        self.relu = nn.ReLU()
-    def forward(self, x):
-        fx = self.relu(self.conv1(x))
-        fx = self.conv2(fx)
-        skip = self.skipconnections(x) if self.dim_red else x
-        return self.relu(fx+skip)
-
-class ResBlock(nn.Module):
+class ResNetBlock(nn.Module):
     def __init__(self, C, dim_red=False):
         '''
         :param C: (int), amount of channels
@@ -241,14 +153,14 @@ class ResBlock(nn.Module):
         (Cin: input channels, Cout: output channels)
         '''
         super().__init__()
-        self.conv1 = nn.Conv2d(C*2 if dim_red else C, C, kernel_size=3, padding=3 // 2)
-        self.conv2 = nn.Conv2d(C, C, kernel_size=3, padding=3 // 2)
-        self.skipconnections = nn.Conv2d(C*2 if dim_red else C, C, kernel_size=1)
+        C_in = C * 2 if dim_red else C
+        self.conv1 = nn.Conv2d(C_in, C_in, kernel_size=3, padding=3 // 2)
+        self.conv2 = nn.Conv2d(C_in, C, kernel_size=3, padding=3 // 2)
+        self.skipconnections = nn.Conv2d(C_in, C, kernel_size=1)
 
         self.relu = nn.ReLU()
-        #nn.init.kaiming_normal(self.conv1.weight.data, nonlinearity='relu')
-        #nn.init.kaiming_normal(self.conv2.weight.data, nonlinearity='relu')
-        #nn.init.kaiming_normal(self.skipconnections.weight.data, nonlinearity='relu')
+        self.dim_red = dim_red
+
     def forward(self, x):
         '''
         forward pass of ResBlock
@@ -257,11 +169,39 @@ class ResBlock(nn.Module):
         '''
         fx = self.relu(self.conv1(x))
         fx = self.conv2(fx)
-        skip = self.skipconnections(x)
+        skip = self.skipconnections(x) if self.dim_red else x
+        return self.relu(fx+skip)
+
+class ResNextBlock(nn.Module):
+    def __init__(self, C, dim_red=False, cardinality=1):
+        '''
+        :param C: (int), amount of channels
+        :param dim_red: (boolean), dimensionality reduction,
+        if True Cin=C*2, Cout=C, else Cin=Cout=C
+        (Cin: input channels, Cout: output channels)
+        :param cardinality: (int), cardinality to group convolution in parts
+        '''
+        super().__init__()
+        C_in = C*2 if dim_red else C
+        self.conv1 = nn.Conv2d(C_in, C_in, kernel_size=3, padding=3 // 2, groups=cardinality)
+        self.conv2 = nn.Conv2d(C_in, C, kernel_size=3, padding=3 // 2, groups=cardinality)
+        self.skipconnections = nn.Conv2d(C_in, C, kernel_size=1, groups=cardinality)
+
+        self.relu = nn.ReLU()
+        self.dim_red = dim_red
+    def forward(self, x):
+        '''
+        forward pass of ResNextBlock
+        :param x: (B, C or C*2, H, W), input tensor
+        :return: (B, C, H, W), output tensor
+        '''
+        fx = self.relu(self.conv1(x))
+        fx = self.conv2(fx)
+        skip = self.skipconnections(x) if self.dim_red else x
         return self.relu(fx+skip)
 
 class ConvBlock(nn.Module):
-    def __init__(self, C, dim_red=False):
+    def __init__(self, C, dim_red=False, cardinality=None):
         '''
         :param C: (int), amount of channels
         :param dim_red: (boolean), dimensionality reduction,
@@ -269,92 +209,56 @@ class ConvBlock(nn.Module):
         (Cin: input channels, Cout: output channels)
         '''
         super().__init__()
-        self.conv1 = nn.Conv2d(C*2 if dim_red else C, C, kernel_size=3, padding=3 // 2)
-        self.conv2 = nn.Conv2d(C, C, kernel_size=3, padding=3 // 2)
+        C_in = C * 2 if dim_red else C
+        self.conv1 = nn.Conv2d(C_in, C_in, kernel_size=3, padding=3 // 2)
+        self.conv2 = nn.Conv2d(C_in, C, kernel_size=3, padding=3 // 2)
 
         self.relu = nn.ReLU()
+
     def forward(self, x):
         '''
-        forward pass of ResBlock
+        forward pass of ConvBlock
         :param x: (B, C or C*2, H, W), input tensor
         :return: (B, C, H, W), output tensor
         '''
         fx = self.relu(self.conv1(x))
         fx = self.conv2(fx)
         return self.relu(fx)
-
-class ResblockBig(nn.Module):
-    def __init__(self, C, dim_red=False):
-        '''
-        :param C: (int), amount of channels
-        :param dim_red: (boolean), dimensionality reduction,
-        if True Cin=C*2, Cout=C, else Cin=Cout=C
-        (Cin: input channels, Cout: output channels)
-        '''
-        super().__init__()
-        self.conv1 = nn.Conv2d(C*2 if dim_red else C, C, kernel_size=7, padding=7 // 2)
-        self.conv2 = nn.Conv2d(C, C, kernel_size=5, padding=5 // 2)
-        self.skipconnections = nn.Conv2d(C*2 if dim_red else C, C, kernel_size=1)
-
-        self.relu = nn.ReLU()
-    def forward(self, x):
-        '''
-        forward pass of ResBlock
-        :param x: (B, C or C*2, H, W), input tensor
-        :return: (B, C, H, W), output tensor
-        '''
-        fx = self.relu(self.conv1(x))
-        fx = self.conv2(fx)
-        skip = self.skipconnections(x)
-        return self.relu(fx+skip)
-
-class ResblockBigT(nn.Module):
-    def __init__(self, in_ch, dim_red=False):
-        super().__init__()
-        self.conv1 = nn.Conv2d(in_ch*2 if dim_red else in_ch, in_ch, kernel_size=7, padding=7 // 2)
-        self.conv2 = nn.Conv2d(in_ch, in_ch, kernel_size=5, padding=5 // 2)
-        self.skipconnections = nn.Conv2d(in_ch*2 if dim_red else in_ch, in_ch, kernel_size=1)
-
-        self.relu = nn.ReLU()
-    def forward(self, x):
-        fx = self.relu(self.conv1(x))
-        fx = self.conv2(fx)
-        skip = self.skipconnections(x) if self.dim_red else x
-        return self.relu(fx+skip)
 
 class SurfaceNet(BaseNet):
     '''
     SurfaceNet inherits from BaseNet and it consists of the general architecture
     '''
-    def __init__(self, layers=12, mid_channels=32, BlockNet=ResBlock):
+    def __init__(self, layers=12, mid_channels=32, BlockNet=ResNetBlock, cardinality=1):
         '''
         :param layers: (int), amount of stacked layers
         :param mid_channels:  (int), amount of mid channels CM
         :param BlockNet: (nn.Module), module for general architecture
+        :param cardinality: (int), cardinality or amount of grouped convolutions
         '''
         super().__init__(crop=50)
         # first and last layer
         self.begin = nn.Conv2d(12, mid_channels, kernel_size=7, padding= 7 // 2)
         self.head = nn.Conv2d(mid_channels//2**3, 1, kernel_size=3, padding=3 // 2)
         # stacked layers BlockNet layers
-        self.mid_layers = nn.ModuleList([BlockNet(mid_channels, dim_red=False) for i in range(layers // 4)])
-        self.mid_layers.extend(nn.ModuleList([BlockNet(mid_channels//2, dim_red=True if i==0 else False) for i in range(layers // 4)]))
-        self.mid_layers.extend(nn.ModuleList([BlockNet(mid_channels//2**2, dim_red=True if i==0 else False) for i in range(layers // 4)]))
-        self.mid_layers.extend(nn.ModuleList([BlockNet(mid_channels//2**3, dim_red=True if i==0 else False) for i in range(layers // 4)]))
+        self.mid_layers = nn.ModuleList([BlockNet(mid_channels, dim_red=False, cardinality=cardinality) for i in range(layers // 4)])
+        self.mid_layers.extend(nn.ModuleList([BlockNet(mid_channels//2, dim_red=True if i==0 else False, cardinality=cardinality) for i in range(layers // 4)]))
+        self.mid_layers.extend(nn.ModuleList([BlockNet(mid_channels//2**2, dim_red=True if i==0 else False, cardinality=cardinality) for i in range(layers // 4)]))
+        self.mid_layers.extend(nn.ModuleList([BlockNet(mid_channels//2**3, dim_red=True if i==0 else False, cardinality=cardinality) for i in range(layers // 4)]))
+
+        self.relu = nn.ReLU()
+
     def forward(self, x):
         '''
         forward pass of SurfaceNet
         :param x: (B,12,H,W), pytorch tensor with 12 images
         :return: (B,H,W), surface matrix in pixel to height representation
         '''
-        x = self.begin(x)
+        x = self.relu(self.begin(x))
         for block in self.mid_layers:
             x = block(x)
         x = self.head(x)
         return x.squeeze(1)
-
-
-
 
 ###############################################
 #               ResidualNetwork               #
