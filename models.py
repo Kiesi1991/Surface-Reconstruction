@@ -89,18 +89,18 @@ class BaseNet(nn.Module):
         plt.savefig(os.path.join(path, f'height-profile.png'))
         plt.close()
 
-    def plotErrorDiagram(self, errors, path):
+    def plotErrorDiagram(self, errors, path, name='error'):
 
-        torch.save(torch.tensor(errors), os.path.join(path, 'errors.pt'))
+        torch.save(torch.tensor(errors), os.path.join(path, f'{name}.pt'))
 
         x = np.linspace(0, len(errors) - 1, len(errors))
-        plt.plot(x, errors, label='errors')
+        plt.plot(x, errors, label=f'{name}')
         #plt.ylim(bottom=0)
         plt.yscale('log')
         plt.xlabel('iteration')
         plt.ylabel('Error')
         plt.legend()
-        plt.savefig(os.path.join(path, f'error.png'))
+        plt.savefig(os.path.join(path, f'{name}.png'))
         plt.close()
 
 class ResNet(BaseNet):
