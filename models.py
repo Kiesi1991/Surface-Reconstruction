@@ -208,7 +208,7 @@ class ResNextBlock(nn.Module):
         return self.relu(fx+skip)
 
 class ConvBlock(nn.Module):
-    def __init__(self, C, dim_red=False, cardinality=None):
+    def __init__(self, C, dim_red=False, cardinality=1):
         '''
         :param C: (int), amount of channels
         :param dim_red: (boolean), dimensionality reduction,
@@ -217,8 +217,8 @@ class ConvBlock(nn.Module):
         '''
         super().__init__()
         C_in = C * 2 if dim_red else C
-        self.conv1 = nn.Conv2d(C_in, C_in, kernel_size=3, padding=3 // 2)
-        self.conv2 = nn.Conv2d(C_in, C, kernel_size=3, padding=3 // 2)
+        self.conv1 = nn.Conv2d(C_in, C_in, kernel_size=3, padding=3 // 2, groups=cardinality)
+        self.conv2 = nn.Conv2d(C_in, C, kernel_size=3, padding=3 // 2, groups=cardinality)
 
         self.relu = nn.ReLU()
 

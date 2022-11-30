@@ -7,7 +7,7 @@ from tqdm import tqdm
 # resolution of images
 resolution = (386, 516)
 # path, where results are stored
-path_results = os.path.join('results', 'trainNN18')
+path_results = os.path.join('results', 'trainNN20')
 # path, where optimized parameters are stored
 path_optimized_parameters = os.path.join('results', 'optimization', '1', '0')
 # path, where real images samples are stored
@@ -15,9 +15,9 @@ path_real_samples = 'realSamples1'
 
 # please enter parameters for SurfaceNet
 # if more than 1 element in list, the training is looped accordingly
-mid_channels=[32] # mid_channels C
-layers=[16] # amount of BlockNet layers
-blocks = [ResNextBlock] # BlockNet: [ResNextBlock, ConvBlock]
+mid_channels=[64] # mid_channels C
+layers=[8] # amount of BlockNet layers
+blocks = [ConvBlock] # BlockNet: [ResNextBlock, ConvBlock]
 cardinality = [1] # cardinality for ResNextBlock
 
 # training parameters
@@ -25,8 +25,8 @@ num_iter = 2001 # amount of synthetic surface samples during training
 batch_size = 2 # batchsize
 lr = 1e-4 # learining rate
 crop = 50 # all images will be cropped accordingly
-encoder_decoder = [True] # use encoder decoder method
-sigma = [1.] # if sigma is 1 full surface loss
+encoder_decoder = [False] # use encoder decoder training loop
+sigma = [0.98] # if sigma is 1 full surface loss
 
 # loop over parameters in lists
 for _layers in layers:
@@ -90,9 +90,13 @@ for _layers in layers:
                                     res = metric(predicted_images[..., crop:-crop, crop:-crop],
                                                  synthetic_images[..., crop:-crop, crop:-crop])
                                 else:
+                                    # calculate gradients for predicted surface
                                     predicted_gradients = getGradients(predicted_surface[..., crop:-crop, crop:-crop])
+                                    # calculate gradients for synthetic surface
                                     synthetic_gradients = getGradients((synthetic_surface[..., crop:-crop, crop:-crop]).to(device))
+                                    # calculate gradient loss
                                     gradients_err = metric(predicted_gradients, synthetic_gradients)
+                                    # calculate total loss
                                     res = (1-_sigma) * gradients_err + _sigma * surface_err
                                 yield res, surface_err.item()
 

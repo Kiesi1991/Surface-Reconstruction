@@ -7,7 +7,7 @@ from pathlib import Path
 file_names = ['error', 'surface error']
 
 for file_name in file_names:
-    path_results = os.path.join('results', 'trainNN18')
+    path_results = os.path.join('results', 'trainNN19')
     file_path = os.path.join(path_results, '**', f'{file_name}.pt')
     paths = glob.glob(file_path, recursive=True)
 
@@ -16,7 +16,7 @@ for file_name in file_names:
 
     for idx, path in enumerate(paths):
         errors = torch.load(path)
-        splits = np.array_split(errors, 10)
+        splits = np.array_split(errors, len(errors)//500)
         parameters_path = os.path.join(Path(path).parent.absolute(), 'parameters.txt')
         with open(parameters_path) as f:
             lines = f.readlines()
@@ -24,8 +24,8 @@ for file_name in file_names:
         #errors = [mean(np.clip(el, 0, 0.02).tolist()) for el in splits]
         try:
             #errors = [mean(sorted(el.tolist())[:-5]) for el in splits]
-            #errors = [mean(el.tolist()) for el in splits]
-            x = np.linspace(0, len(errors) - 1, len(errors))
+            errors = [mean(el.tolist()) for el in splits]
+            x = np.linspace(0, len(errors) - 1, len(errors))*len(splits[0])
             child = Path(path).parent.absolute().parts[-1]
             plt.plot(x, errors, label=child + "," + parameters)
         except:
